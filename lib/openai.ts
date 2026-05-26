@@ -52,7 +52,7 @@ export async function visualizeRoomWithRug({
   size = '1024x1024',
 }: VisualizeArgs): Promise<VisualizeResult> {
   const openai = getOpenAI();
-  const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+  const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5';
   const startedAt = Date.now();
 
   // Fetch the product image and convert to base64 (gpt-image edit wants files/buffers)
@@ -61,14 +61,7 @@ export async function visualizeRoomWithRug({
   const productBuf = Buffer.from(await productImg.arrayBuffer());
   const roomBuf = Buffer.from(roomImageBase64, 'base64');
 
-  const prompt = [
-    `Edit the first image (a room photo) to add the rug shown in the second image onto the visible floor area.`,
-    productTitle ? `The rug is a "${productTitle}".` : null,
-    `Match the room's perspective, lighting, and shadows so the rug looks naturally placed.`,
-    `Keep all other elements of the room — furniture, walls, decor, plants — exactly as they are.`,
-    `Preserve the rug's pattern and colors faithfully from the reference.`,
-    `Produce a photorealistic result.`,
-  ].filter(Boolean).join(' ');
+  const prompt = `Task: Perform scene-consistent inpainting to insert the exact rug from image-2 onto the floor of image-1.${productTitle ? ` The rug is a "${productTitle}".` : ''} Preserve room structure: - Do not change walls, furniture, windows, or camera angle. - Do not move or redesign any objects. Preserve rug identity: - Use the exact rug image as texture source. - Do not reinterpret or redesign the pattern. - Pattern geometry must remain identical. Photorealistic placement: - Place the rug flat on the floor plane. - Match room perspective and vanishing lines. - The rug must be larger at the bottom edge (closer to camera) and narrower at the far edge. - The rug must follow the same vanishing point as the floor lines. - Keep the entire rug fully visible; do not crop or cut any rug edge. - Leave a visible floor margin around the rug on all sides. - Rug footprint should stay moderate (not wall-to-wall, not filling most of the room). - The rug must NOT cover the entire floor. - The rug must be clearly smaller than the room floor. - Do not extend the rug to the walls. - Only adapt scale and perspective, not design. - Ensure correct real-world scale. Blending & Lighting: - Rug must inherit floor lighting, shadows, color temperature. - Floor texture must subtly affect rug edges. - Remove any mask edges, no white borders, no overlay look. - Apply minimal global luminance adjustment only if strictly necessary. - The rug texture and pattern must be treated as a photographic cutout, not re-generated. Restrictions: - No comparison. - No side-by-side. - No A/B. - Always single final render. Output: - Single realistic image.`;
 
   // gpt-image-1 supports multi-image edit via the `image` array parameter
   // (SDK type currently expects a single file; we pass an array via `as any`)
