@@ -28,8 +28,7 @@ export default function Hero({ onDemo, onCustomize }: { onDemo: () => void; onCu
   const [url, setUrl] = useState('');
 
   function start() {
-    const q = url.trim() ? `?url=${encodeURIComponent(url.trim())}` : '';
-    router.push(`/customize${q}`);
+    router.push('/signup');
   }
 
   return (

@@ -16,10 +16,12 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setErr(null);
-    const { error } = await getBrowserSupabase().auth.signInWithPassword({ email, password });
+    const supabase = getBrowserSupabase();
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) return setErr(error.message);
-    router.push('/overview');
+    const { data: profile } = await supabase.from('users').select('onboarded').eq('id', authData.user.id).single();
+    router.push(profile?.onboarded ? '/overview' : '/onboarding');
     router.refresh();
   }
 

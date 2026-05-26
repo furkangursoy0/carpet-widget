@@ -103,7 +103,7 @@ export default function Faq() {
         <div className="mt-8 text-center">
           <p className="text-sub text-sm font-medium mb-3">Still wondering?</p>
           <Link
-            href="/customize"
+            href="/signup"
             className="h-11 px-5 rounded-lg bg-brand text-white text-sm font-extrabold shadow-brand hover:bg-brand-dark transition-colors inline-flex items-center justify-center gap-2"
           >
             Try the builder

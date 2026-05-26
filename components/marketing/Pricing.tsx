@@ -190,7 +190,7 @@ function PlanCard({ plan, price, billing }: { plan: Plan; price: number; billing
 
       {/* CTA — sends to the builder. Featured plan gets the solid CTA. */}
       <Link
-        href="/customize"
+        href="/signup"
         className={`mt-6 h-11 rounded-lg inline-flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors ${
           featured
             ? 'bg-brand text-white hover:bg-brand-dark'

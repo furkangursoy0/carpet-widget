@@ -51,7 +51,7 @@ export default function FlowShowcase() {
           Softer shadow than the hero CTA so the row doesn't shout. */}
       <div className="mt-10 flex justify-center">
         <Link
-          href="/customize"
+          href="/signup"
           className="h-12 px-6 rounded-lg bg-brand text-white text-sm font-extrabold shadow-sm hover:bg-brand-dark transition-colors inline-flex items-center justify-center gap-2"
         >
           Try it on your store
