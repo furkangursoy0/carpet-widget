@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
 export default function Navbar({
@@ -17,17 +17,39 @@ export default function Navbar({
 }) {
   const router = useRouter();
   const [authState, setAuthState] = useState<'loading' | 'in' | 'out'>('loading');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [displayEmail, setDisplayEmail] = useState<string>('');
 
   useEffect(() => {
     const supabase = getBrowserSupabase();
     let mounted = true;
+
+    async function hydrate(userId: string, email: string) {
+      const { data: profile } = await supabase.from('users').select('brand_name').eq('id', userId).maybeSingle();
+      if (!mounted) return;
+      setDisplayName(profile?.brand_name?.trim() || email.split('@')[0] || 'Account');
+      setDisplayEmail(email);
+    }
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!mounted) return;
-      setAuthState(user ? 'in' : 'out');
+      if (user) {
+        setAuthState('in');
+        hydrate(user.id, user.email ?? '');
+      } else {
+        setAuthState('out');
+      }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
       if (!mounted) return;
-      setAuthState(session?.user ? 'in' : 'out');
+      if (session?.user) {
+        setAuthState('in');
+        hydrate(session.user.id, session.user.email ?? '');
+      } else {
+        setAuthState('out');
+        setDisplayName('');
+        setDisplayEmail('');
+      }
     });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
@@ -71,14 +93,24 @@ export default function Navbar({
             <button
               type="button"
               aria-label="Account menu"
-              className="w-9 h-9 rounded-full bg-brand grid place-items-center shadow-brand hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-line bg-white hover:bg-bg transition-colors"
             >
-              <LayoutDashboard size={16} color="white" strokeWidth={2.4} />
+              <span className="w-6 h-6 rounded-full bg-brand-light grid place-items-center">
+                <span className="text-[11px] font-extrabold text-brand-ink">
+                  {(displayName || 'S').charAt(0).toUpperCase()}
+                </span>
+              </span>
+              <span className="text-ink text-[13px] font-bold max-w-[160px] truncate">{displayName || 'Account'}</span>
+              <ChevronDown size={13} className="text-sub" />
             </button>
-            <div
-              className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-opacity z-20"
-            >
-              <div className="w-44 rounded-xl border border-line bg-white shadow-cardHover p-1.5">
+            <div className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-opacity z-20">
+              <div className="w-56 rounded-xl border border-line bg-white shadow-cardHover p-1.5">
+                {displayEmail ? (
+                  <div className="px-3 py-2 border-b border-rail mb-1">
+                    <p className="text-xs text-sub truncate">Signed in as</p>
+                    <p className="text-sm font-bold text-ink truncate">{displayEmail}</p>
+                  </div>
+                ) : null}
                 <Link href="/overview" className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-ink hover:bg-bg">
                   <LayoutDashboard size={14} className="text-sub" /> Dashboard
                 </Link>
@@ -100,7 +132,7 @@ export default function Navbar({
           </Link>
         ) : (
           // loading — keep slot reserved so layout doesn't shift
-          <div className="w-9 h-9" />
+          <div className="h-9 w-24" />
         )}
       </div>
       </div>
