@@ -29,12 +29,12 @@ export default function LoginPage() {
     <main className="min-h-screen grid place-items-center px-6 bg-bg">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2.5 mb-6">
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-6 hover:opacity-80 transition-opacity">
             <div className="w-9 h-9 rounded-xl bg-brand grid place-items-center shadow-brand">
               <span className="text-white font-black text-lg">S</span>
             </div>
             <span className="text-xl font-extrabold tracking-tight">Sceneva</span>
-          </div>
+          </Link>
           <h1 className="text-2xl font-extrabold tracking-tight">Welcome back</h1>
           <p className="text-sm text-sub mt-1">Sign in to your operator dashboard.</p>
         </div>

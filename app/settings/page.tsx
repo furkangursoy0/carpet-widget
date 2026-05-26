@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getServerSupabase, getServiceSupabase } from '@/lib/supabase-server';
+import { getServerSupabase } from '@/lib/supabase-server';
 import DashShell from '@/components/DashShell';
 import SettingsClient from './SettingsClient';
 
@@ -13,17 +13,19 @@ export default async function SettingsPage() {
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single();
   if (!profile?.onboarded) redirect('/onboarding');
 
-  const svc = getServiceSupabase();
-  const { data: widget } = await svc.from('widgets').select('*').eq('user_id', user.id).limit(1).maybeSingle();
-
   return (
     <DashShell
       brandName={profile.brand_name ?? ''}
       userEmail={user.email ?? ''}
       title="Settings"
-      subtitle="Brand, widget appearance, embed code, and account."
+      subtitle="Brand and account. Widget settings live under Widgets."
     >
-      <SettingsClient widget={widget} userId={user.id} />
+      <SettingsClient
+        initialBrandName={profile.brand_name ?? ''}
+        initialStoreUrl={profile.store_url ?? ''}
+        userEmail={user.email ?? ''}
+        userId={user.id}
+      />
     </DashShell>
   );
 }

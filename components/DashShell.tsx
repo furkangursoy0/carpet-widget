@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Settings, CreditCard, LogOut, HelpCircle, ChevronDown, X as XIcon } from 'lucide-react';
+import { LayoutDashboard, Settings, CreditCard, LogOut, HelpCircle, ChevronDown, X as XIcon, Boxes } from 'lucide-react';
 import { useState } from 'react';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/overview', label: 'Overview', Icon: LayoutDashboard },
+  { href: '/widgets', label: 'Widgets', Icon: Boxes },
   { href: '/settings', label: 'Settings', Icon: Settings },
   { href: '/billing', label: 'Billing', Icon: CreditCard },
 ];
@@ -42,7 +43,7 @@ export default function DashShell({
     <div className="min-h-screen bg-bg flex">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-line flex flex-col">
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-rail">
+        <Link href="/" className="flex items-center gap-3 px-5 py-5 border-b border-rail hover:bg-bg transition-colors">
           <div className="w-9 h-9 rounded-xl bg-brand grid place-items-center shadow-brand">
             <span className="text-white font-black text-lg">S</span>
           </div>
@@ -50,11 +51,11 @@ export default function DashShell({
             <p className="font-extrabold text-ink truncate">Sceneva</p>
             <p className="text-xs text-sub truncate">{brandName || userEmail}</p>
           </div>
-        </div>
+        </Link>
 
         <nav className="flex-1 p-3 space-y-1">
           {NAV.map(({ href, label, Icon }) => {
-            const active = pathname === href;
+            const active = pathname === href || pathname?.startsWith(href + '/');
             return (
               <Link
                 key={href}

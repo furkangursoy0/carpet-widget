@@ -2,10 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { defaultAllowedDomains } from '@/lib/utils';
+import StorePreview from '@/components/marketing/StorePreview';
 
 const ACCENTS = ['#2458F5', '#0EA5A4', '#7C3AED', '#F15A24', '#E9306A', '#0F172A'];
+
+type Format = 'floating-button' | 'side-tab';
+type FloatingPos = 'bottom-right' | 'bottom-left';
+type SideEdge = 'right' | 'left';
+type Shape = 'pill' | 'circle';
 
 export default function OnboardingClient({
   initialBrandName,
@@ -20,7 +27,17 @@ export default function OnboardingClient({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [brandName, setBrandName] = useState(initialBrandName);
   const [storeUrl, setStoreUrl] = useState(initialStoreUrl);
+
+  // Widget customization (mirrors the widgets table columns)
+  const [format, setFormat] = useState<Format>('floating-button');
+  const [floatingPos, setFloatingPos] = useState<FloatingPos>('bottom-right');
+  const [sideEdge, setSideEdge] = useState<SideEdge>('right');
+  const [buttonShape, setButtonShape] = useState<Shape>('pill');
   const [accent, setAccent] = useState('#2458F5');
+  const [borderRadius, setBorderRadius] = useState(16);
+  const [buttonText, setButtonText] = useState('See this rug in your room');
+  const [previewState, setPreviewState] = useState<'Default' | 'Open' | 'Result'>('Default');
+
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -32,8 +49,6 @@ export default function OnboardingClient({
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('users').update({ brand_name: brandName, store_url: storeUrl }).eq('id', user.id);
-      // Auto-populate the widget's authorized-domains list from store_url
-      // so the merchant doesn't have to set it manually before going live.
       const domains = defaultAllowedDomains(storeUrl);
       if (domains.length) {
         await supabase.from('widgets').update({ allowed_domains: domains }).eq('user_id', user.id);
@@ -43,12 +58,23 @@ export default function OnboardingClient({
     setStep(2);
   }
 
-  async function saveAccentStep() {
+  async function saveCustomizeStep() {
     setSaving(true);
     const supabase = getBrowserSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('widgets').update({ accent_color: accent }).eq('user_id', user.id);
+      const position = format === 'floating-button' ? floatingPos : sideEdge;
+      await supabase
+        .from('widgets')
+        .update({
+          format,
+          position,
+          accent_color: accent,
+          border_radius: borderRadius,
+          button_text: buttonText,
+          button_shape: buttonShape,
+        })
+        .eq('user_id', user.id);
     }
     setSaving(false);
     setStep(3);
@@ -61,9 +87,6 @@ export default function OnboardingClient({
     if (user) {
       await supabase.from('users').update({ onboarded: true }).eq('id', user.id);
     }
-    // Send new users to billing first so they subscribe before going live.
-    // After successful Lemon checkout, they bounce back to /billing?welcome=1
-    // which then offers a clear path into /overview.
     router.push('/billing');
     router.refresh();
   }
@@ -76,9 +99,17 @@ export default function OnboardingClient({
     }
   }
 
+  // StorePreview expects the marketing-style enum strings
+  const previewFormat = format === 'floating-button' ? 'Floating Button' : 'Side Tab';
+  const previewFloating = floatingPos === 'bottom-right' ? 'Bottom Right' : 'Bottom Left';
+  const previewEdge = sideEdge === 'right' ? 'Right' : 'Left';
+  const previewShape = buttonShape === 'pill' ? 'Pill' : 'Circle';
+
+  const wideStep = step === 2;
+
   return (
     <main className="min-h-screen px-6 py-10 bg-bg">
-      <div className="max-w-2xl mx-auto">
+      <div className={`${wideStep ? 'max-w-6xl' : 'max-w-2xl'} mx-auto`}>
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2.5 mb-4">
@@ -125,28 +156,144 @@ export default function OnboardingClient({
           </div>
         ) : null}
 
-        {/* Step 2 — accent color */}
+        {/* Step 2 — customize (full builder, side-by-side preview) */}
         {step === 2 ? (
-          <div className="card p-7 space-y-4">
-            <div>
-              <h2 className="text-lg font-extrabold">Pick your accent color</h2>
-              <p className="text-sm text-sub mt-1">Used for the widget button, modal CTA, and badges. Change anytime.</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {ACCENTS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setAccent(c)}
-                  className={`w-12 h-12 rounded-xl transition-all hover:scale-105 ${accent === c ? 'ring-4 ring-offset-2 ring-brand/30 scale-105' : ''}`}
-                  style={{ backgroundColor: c }}
+          <div className="grid lg:grid-cols-[0.86fr_1.08fr] gap-5">
+            {/* Left: form */}
+            <div className="card p-6 space-y-5">
+              <div>
+                <h2 className="text-lg font-extrabold">Customize how it looks</h2>
+                <p className="text-sm text-sub mt-1">Every change reflects in the live preview.</p>
+              </div>
+
+              <Field label="Widget format">
+                <Segmented
+                  items={[
+                    { value: 'floating-button', label: 'Floating Button' },
+                    { value: 'side-tab', label: 'Side Tab' },
+                  ]}
+                  selected={format}
+                  onSelect={(v) => setFormat(v as Format)}
                 />
-              ))}
+              </Field>
+
+              {format === 'floating-button' ? (
+                <>
+                  <Field label="Position">
+                    <Segmented
+                      items={[
+                        { value: 'bottom-left', label: 'Bottom Left' },
+                        { value: 'bottom-right', label: 'Bottom Right' },
+                      ]}
+                      selected={floatingPos}
+                      onSelect={(v) => setFloatingPos(v as FloatingPos)}
+                    />
+                  </Field>
+                  <Field label="Button shape" help="Circle = icon only. Use when your bottom corner already has a chat widget.">
+                    <Segmented
+                      items={[
+                        { value: 'pill', label: 'Pill' },
+                        { value: 'circle', label: 'Circle' },
+                      ]}
+                      selected={buttonShape}
+                      onSelect={(v) => setButtonShape(v as Shape)}
+                    />
+                  </Field>
+                </>
+              ) : (
+                <Field label="Edge" help="Vertical tab anchored to the chosen viewport edge.">
+                  <Segmented
+                    items={[
+                      { value: 'left', label: 'Left' },
+                      { value: 'right', label: 'Right' },
+                    ]}
+                    selected={sideEdge}
+                    onSelect={(v) => setSideEdge(v as SideEdge)}
+                  />
+                </Field>
+              )}
+
+              <Field label="Accent color">
+                <div className="flex flex-wrap items-center gap-3">
+                  {ACCENTS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setAccent(c)}
+                      className={`w-[38px] h-[38px] rounded-lg grid place-items-center transition-transform hover:scale-110 ${accent === c ? 'ring-4 ring-offset-2 ring-brand/30 scale-110' : ''}`}
+                      style={{ backgroundColor: c }}
+                    >
+                      {accent === c ? <Check size={14} color="white" strokeWidth={3} /> : null}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'color';
+                      input.value = accent;
+                      input.addEventListener('input', (e: any) => setAccent(e.target.value));
+                      input.click();
+                    }}
+                    className="w-[38px] h-[38px] rounded-lg border-2 border-dashed border-line bg-white grid place-items-center text-sub text-xl font-semibold hover:border-sub/50"
+                  >+</button>
+                </div>
+              </Field>
+
+              <Slider label="Border radius" value={borderRadius} min={0} max={32} unit="px" accent={accent} onChange={setBorderRadius} />
+
+              <Field label="Button label" help="Up to 40 characters — change it whenever, no redeploy needed.">
+                <input
+                  type="text"
+                  value={buttonText}
+                  onChange={(e) => setButtonText(e.target.value.slice(0, 40))}
+                  maxLength={40}
+                  placeholder="See this rug in your room"
+                  className="input"
+                />
+              </Field>
+
+              <div className="flex gap-3 pt-2">
+                <button className="btn-ghost h-11" onClick={() => setStep(1)}>Back</button>
+                <button className="btn-primary h-11 flex-1" onClick={saveCustomizeStep} disabled={saving}>
+                  {saving ? 'Saving…' : 'Continue'}
+                </button>
+              </div>
             </div>
-            <div className="flex gap-3 pt-2">
-              <button className="btn-ghost h-11" onClick={() => setStep(1)}>Back</button>
-              <button className="btn-primary h-11 flex-1" onClick={saveAccentStep} disabled={saving}>
-                {saving ? 'Saving…' : 'Continue'}
-              </button>
+
+            {/* Right: preview */}
+            <div className="card p-5">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h3 className="text-ink text-lg font-extrabold tracking-tight">Live Preview</h3>
+                    <span className="w-2 h-2 rounded-full bg-brand shadow-[0_0_8px_rgba(36,88,245,0.4)]" />
+                    <span className="text-sub text-xs font-semibold">Updates as you edit</span>
+                  </div>
+                  <p className="text-sub text-xs leading-[18px] font-medium mt-1.5">
+                    Exactly how the widget renders on your product page.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPreviewState((s) => s === 'Default' ? 'Open' : s === 'Open' ? 'Result' : 'Default')}
+                  className="h-9 rounded-lg border border-line bg-white px-3 text-ink text-xs font-semibold hover:bg-bg"
+                >
+                  {previewState} state →
+                </button>
+              </div>
+
+              <StorePreview
+                widgetFormat={previewFormat as any}
+                floatingPosition={previewFloating as any}
+                floatingShape={previewShape as any}
+                floatingRadius={borderRadius}
+                sideTabEdge={previewEdge as any}
+                accent={accent}
+                borderRadius={borderRadius}
+                buttonText={buttonText}
+                widgetMode={'Light' as any}
+                previewState={previewState}
+                language={'English' as any}
+                forceInline={false}
+              />
             </div>
           </div>
         ) : null}
@@ -177,5 +324,61 @@ export default function OnboardingClient({
         ) : null}
       </div>
     </main>
+  );
+}
+
+// ─── helpers ───────────────────────────────────────────────────────
+
+function Field({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-ink text-xs font-bold">{label}</p>
+      {children}
+      {help ? <p className="text-sub text-xs leading-[18px] font-medium">{help}</p> : null}
+    </div>
+  );
+}
+
+function Segmented<T extends string>({ items, selected, onSelect }: { items: { value: T; label: string }[]; selected: T; onSelect: (v: T) => void }) {
+  return (
+    <div className="flex rounded-lg border border-line overflow-hidden bg-white">
+      {items.map((item) => (
+        <button
+          key={item.value}
+          onClick={() => onSelect(item.value)}
+          className={`flex-1 h-[42px] flex items-center justify-center gap-2 border-r border-line last:border-r-0 transition-colors ${
+            selected === item.value ? 'bg-brand-tint' : 'hover:bg-bg'
+          }`}
+        >
+          <span className={`text-[13px] tracking-tight ${selected === item.value ? 'text-brand-ink font-bold' : 'text-sub font-semibold'}`}>{item.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Slider({ label, value, min, max, unit = '', accent, onChange }: { label: string; value: number; min: number; max: number; unit?: string; accent: string; onChange: (v: number) => void }) {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-ink text-xs font-bold">{label}</p>
+        <span className="text-[#334155] text-xs font-bold">{value}{unit}</span>
+      </div>
+      <div className="relative h-[22px] flex items-center">
+        <div className="relative h-1.5 w-full rounded-full bg-line">
+          <div className="absolute top-0 left-0 h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: accent }} />
+          <div className="absolute top-[-5px] w-4 h-4 rounded-full border-2 border-white" style={{ left: `${pct}%`, backgroundColor: accent, transform: 'translateX(-50%)' }} />
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        />
+      </div>
+    </div>
   );
 }
