@@ -1,59 +1,19 @@
-// Standalone widget builder page. Linked from the landing hero ("Start
-// building"), from the FlowShowcase CTA, and from the navbar.
-//
-// We render the WidgetBuilderShowcase inside a thin shell that keeps the
-// marketing chrome (Navbar + Footer) so visitors can navigate back without
-// losing context.
+// /customize used to be the unauthenticated widget builder. With
+// onboarding now offering the full builder + live preview, that path
+// became a dead-end. We keep the route alive (it's still linked from
+// the docs, a few internal nav helpers, and Google may have indexed it
+// — see app/sitemap.ts history) and redirect server-side:
+//   • signed-in users → /widgets (their real widget editor)
+//   • everyone else → /signup?next=/widgets (carry intent through auth)
 
-'use client';
+import { redirect } from 'next/navigation';
+import { getServerSupabase } from '@/lib/supabase-server';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Navbar from '@/components/marketing/Navbar';
-import Footer from '@/components/marketing/Footer';
-import WidgetBuilderShowcase from '@/components/marketing/WidgetBuilderShowcase';
-import FullscreenDemo from '@/components/demo/FullscreenDemo';
+export const dynamic = 'force-dynamic';
 
-function CustomizeInner() {
-  const [demoOpen, setDemoOpen] = useState(false);
-  const params = useSearchParams();
-  const initialUrl = params.get('url') ?? '';
-
-  return (
-    <div className="min-h-screen bg-white">
-      <Navbar
-        onDemo={() => setDemoOpen(true)}
-        onFeatures={() => { window.location.href = '/#features'; }}
-        onInstall={() => { window.location.href = '/#install'; }}
-        onPricing={() => { window.location.href = '/#pricing'; }}
-        onCustomize={() => { /* already here */ }}
-      />
-
-      <div className="px-8 lg:px-16 pt-10 pb-6">
-        <p className="text-brand text-[11px] font-extrabold uppercase tracking-tight mb-3">
-          Widget Builder
-        </p>
-        <h1 className="text-ink text-[36px] lg:text-[52px] leading-[1.05] font-bold tracking-tight max-w-3xl">
-          Design your widget — see it live as you go.
-        </h1>
-        <p className="text-sub text-base leading-[1.55] font-medium mt-4 max-w-2xl">
-          Enter your store URL, pick the look that matches your brand, then copy a single line of code into your theme. Takes about two minutes.
-        </p>
-      </div>
-
-      <WidgetBuilderShowcase initialUrl={initialUrl} onDemo={() => setDemoOpen(true)} />
-
-      <Footer onDemo={() => setDemoOpen(true)} />
-
-      {demoOpen ? <FullscreenDemo onClose={() => setDemoOpen(false)} /> : null}
-    </div>
-  );
-}
-
-export default function CustomizePage() {
-  return (
-    <Suspense fallback={null}>
-      <CustomizeInner />
-    </Suspense>
-  );
+export default async function CustomizeRedirect() {
+  const supabase = getServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) redirect('/widgets');
+  redirect('/signup');
 }

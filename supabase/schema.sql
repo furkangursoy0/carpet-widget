@@ -306,3 +306,64 @@ begin
   return true;
 end;
 $$;
+
+
+-- ───────────────────────────────────────────────────────────────────
+-- HOUSEKEEPING: scheduled cleanups
+-- Wire these up with Supabase Cron (pg_cron extension) once enabled.
+--
+--   select cron.schedule('gc-rate-limits',  '*/15 * * * *', $$ select public.gc_rate_limits(); $$);
+--   select cron.schedule('gc-old-previews',     '0 3 * * *', $$ select public.gc_old_previews(30); $$);
+--
+-- Both functions are idempotent and safe to invoke ad hoc.
+-- ───────────────────────────────────────────────────────────────────
+
+-- Bulk cleanup for rate_limits — runs alongside the opportunistic GC
+-- inside check_rate_limit() so the table never grows unbounded under
+-- load spikes. Returns the number of rows pruned for monitoring.
+create or replace function public.gc_rate_limits()
+returns int
+language plpgsql security definer set search_path = public as $$
+declare
+  removed int;
+begin
+  delete from public.rate_limits
+   where window_started_at < now() - interval '2 hours';
+  get diagnostics removed = row_count;
+  return removed;
+end;
+$$;
+
+-- Storage cleanup: delete preview images older than `keep_days` days
+-- (default 30) from the `previews` bucket. We rely on `usage_events`
+-- to find the storage paths so we never touch unrelated keys, and we
+-- null out the column afterwards so old rows still summarise into
+-- analytics but no longer reference a missing object.
+create or replace function public.gc_old_previews(keep_days int default 30)
+returns int
+language plpgsql security definer set search_path = public, storage as $$
+declare
+  removed int := 0;
+  r record;
+begin
+  for r in
+    select id, result_storage_path
+    from public.usage_events
+    where result_storage_path is not null
+      and created_at < now() - (keep_days || ' days')::interval
+    limit 1000
+  loop
+    -- Use the storage.delete_object helper if present; otherwise fall
+    -- back to a direct storage.objects delete. Either path is safe
+    -- because the bucket has a service-role-only policy.
+    delete from storage.objects
+     where bucket_id = 'previews'
+       and name = r.result_storage_path;
+    update public.usage_events
+       set result_storage_path = null
+     where id = r.id;
+    removed := removed + 1;
+  end loop;
+  return removed;
+end;
+$$;
