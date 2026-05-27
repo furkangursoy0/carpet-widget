@@ -1,16 +1,56 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AlertCircle } from 'lucide-react';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
-export default function LoginPage() {
+// Surface friendly copy for the few error codes that bubble back from
+// /auth/callback when a magic link or confirmation token is no good.
+const ERROR_COPY: Record<string, { title: string; body: string; cta?: 'resend' }> = {
+  missing_code: {
+    title: 'That confirmation link looks empty',
+    body: 'Try clicking it directly from your email — or request a new one below.',
+    cta: 'resend',
+  },
+  expired_token: {
+    title: 'That confirmation link expired',
+    body: 'Links are valid for 24 hours. Send yourself a fresh one and try again.',
+    cta: 'resend',
+  },
+  invalid_grant: {
+    title: 'That link was already used',
+    body: 'It looks like you already confirmed this device. Just sign in normally.',
+  },
+};
+
+function LoginInner() {
   const router = useRouter();
+  const params = useSearchParams();
+  const rawError = params.get('error');
+  const friendlyError = rawError
+    ? ERROR_COPY[rawError] ?? { title: 'Sign-in problem', body: decodeURIComponent(rawError) }
+    : null;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendDone, setResendDone] = useState(false);
+  const [resendErr, setResendErr] = useState<string | null>(null);
+
+  // Clear the ?error query once the user starts interacting again so the
+  // banner doesn't linger after they retype credentials.
+  useEffect(() => {
+    if (email && rawError) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('error');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [email, rawError]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,6 +63,23 @@ export default function LoginPage() {
     const { data: profile } = await supabase.from('users').select('onboarded').eq('id', authData.user.id).single();
     router.push(profile?.onboarded ? '/overview' : '/onboarding');
     router.refresh();
+  }
+
+  async function resendConfirmation() {
+    setResendBusy(true);
+    setResendErr(null);
+    setResendDone(false);
+    const supabase = getBrowserSupabase();
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}/auth/callback?next=/onboarding`,
+      },
+    });
+    setResendBusy(false);
+    if (error) return setResendErr(error.message);
+    setResendDone(true);
   }
 
   return (
@@ -38,6 +95,33 @@ export default function LoginPage() {
           <h1 className="text-2xl font-extrabold tracking-tight">Welcome back</h1>
           <p className="text-sm text-sub mt-1">Sign in to your operator dashboard.</p>
         </div>
+
+        {friendlyError ? (
+          <div className="rounded-xl border border-warn/30 bg-warn/10 p-4 mb-5 flex items-start gap-3">
+            <AlertCircle size={16} className="text-warn-ink mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-warn-ink">{friendlyError.title}</p>
+              <p className="text-xs text-warn-ink/80 mt-1 leading-relaxed">{friendlyError.body}</p>
+              {friendlyError.cta === 'resend' ? (
+                <div className="mt-3">
+                  {resendDone ? (
+                    <p className="text-xs font-bold text-success">✓ Sent — check your inbox.</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={resendConfirmation}
+                      disabled={!email || resendBusy}
+                      className="text-xs font-bold text-brand hover:text-brand-dark disabled:opacity-50"
+                    >
+                      {resendBusy ? 'Sending…' : email ? 'Resend confirmation link' : 'Type your email below, then click here to resend'}
+                    </button>
+                  )}
+                  {resendErr ? <p className="text-xs text-danger mt-1">{resendErr}</p> : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <form onSubmit={handleSubmit} className="card p-7 space-y-4">
           <div>
@@ -63,5 +147,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }

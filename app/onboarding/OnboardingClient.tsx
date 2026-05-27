@@ -91,6 +91,21 @@ export default function OnboardingClient({
     router.refresh();
   }
 
+  // "Skip for now" sends the merchant straight to the dashboard. We
+  // still mark onboarded=true (so they aren't bounced back here), and
+  // their widget row already exists — they can finish customising any
+  // time from /widgets and they can subscribe from /billing when ready.
+  async function skip() {
+    setSaving(true);
+    const supabase = getBrowserSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('users').update({ onboarded: true }).eq('id', user.id);
+    }
+    router.push('/overview');
+    router.refresh();
+  }
+
   function copyEmbed() {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(embedSnippet);
@@ -110,6 +125,20 @@ export default function OnboardingClient({
   return (
     <main className="min-h-screen px-6 py-10 bg-bg">
       <div className={`${wideStep ? 'max-w-6xl' : 'max-w-2xl'} mx-auto`}>
+        {/* Top bar: brand + escape hatch. We don't trap merchants in
+            onboarding — they can finish any of these steps later from
+            /settings, /widgets, and /billing. */}
+        <div className="flex items-center justify-end mb-6">
+          <button
+            type="button"
+            onClick={skip}
+            disabled={saving}
+            className="text-xs font-bold text-sub hover:text-ink transition-colors disabled:opacity-50"
+          >
+            Skip for now →
+          </button>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2.5 mb-4">
@@ -119,7 +148,7 @@ export default function OnboardingClient({
             <span className="text-xl font-extrabold tracking-tight">Sceneva</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight">Set up your widget</h1>
-          <p className="text-sm text-sub mt-1">3 quick steps. Less than a minute.</p>
+          <p className="text-sm text-sub mt-1">3 quick steps. Less than a minute. You can finish later from your dashboard.</p>
         </div>
 
         {/* Stepper */}

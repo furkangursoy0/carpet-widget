@@ -75,7 +75,7 @@ export default function DashShell({
 
         <div className="p-3 border-t border-rail space-y-1">
           <Link
-            href="/docs/install-shopify"
+            href="/docs"
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-sub hover:bg-bg hover:text-ink transition-colors"
           >
             <HelpCircle size={17} strokeWidth={2.1} />
@@ -114,7 +114,17 @@ export default function DashShell({
             <h1 className="text-xl font-extrabold tracking-tight">{title}</h1>
             {subtitle ? <p className="text-sm text-sub mt-0.5">{subtitle}</p> : null}
           </div>
-          <div className="flex items-center gap-2">{actions}</div>
+          <div className="flex items-center gap-2">
+            {actions}
+            <Link
+              href="/docs"
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-bold text-sub hover:bg-bg hover:text-ink transition-colors"
+              title="Open docs"
+            >
+              <HelpCircle size={15} strokeWidth={2.2} />
+              Help
+            </Link>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-8 py-8 space-y-5">{children}</div>

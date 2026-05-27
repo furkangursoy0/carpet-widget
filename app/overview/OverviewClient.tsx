@@ -1,6 +1,7 @@
 'use client';
 
-import { Eye, Users, Download, Target, Monitor, Smartphone, Tablet, ArrowUpRight, Sparkles, Share2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Eye, Users, Download, Target, Monitor, Smartphone, Tablet, ArrowUpRight, Sparkles, Share2, Filter } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
 
 type EventRow = {
@@ -11,17 +12,31 @@ type EventRow = {
   created_at: string;
 };
 
+type WidgetSummary = { id: string; name: string };
+
 export default function OverviewClient({
   events,
   used,
   limit,
   periodEnd,
+  widgets,
+  selectedWidget,
 }: {
   events: EventRow[];
   used: number;
   limit: number;
   periodEnd: string | null;
+  widgets: WidgetSummary[];
+  selectedWidget: string;
 }) {
+  const router = useRouter();
+
+  function changeFilter(next: string) {
+    const url = new URL(window.location.href);
+    if (next === 'all') url.searchParams.delete('widget');
+    else url.searchParams.set('widget', next);
+    router.push(`${url.pathname}${url.search}`);
+  }
   const generated = events.filter((e) => e.event_type === 'generated').length;
   const sessions = new Set(events.map((e) => `${e.page_url}-${e.created_at.slice(0, 10)}`)).size;
   const downloads = events.filter((e) => e.event_type === 'downloaded').length;
@@ -43,6 +58,29 @@ export default function OverviewClient({
 
   return (
     <>
+      {/* Widget filter — only useful once a merchant has 2+ widgets,
+          but always visible (with a single "All widgets" option) so
+          there's no UI jump after adding the second widget. */}
+      {widgets.length > 1 ? (
+        <div className="card p-3 flex items-center gap-3">
+          <Filter size={14} className="text-sub flex-shrink-0" />
+          <span className="text-xs font-bold text-sub">Filter analytics by</span>
+          <select
+            value={selectedWidget}
+            onChange={(e) => changeFilter(e.target.value)}
+            className="flex-1 sm:flex-initial min-w-[180px] h-9 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/15 outline-none"
+          >
+            <option value="all">All widgets</option>
+            {widgets.map((w) => (
+              <option key={w.id} value={w.id}>{w.name || 'Untitled widget'}</option>
+            ))}
+          </select>
+          <p className="text-xs text-sub hidden sm:block">
+            Plan usage below stays whole-account (quota is per subscription).
+          </p>
+        </div>
+      ) : null}
+
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="Room previews generated" value={formatNumber(generated)} Icon={Eye} />

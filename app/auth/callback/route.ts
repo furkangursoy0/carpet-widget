@@ -34,7 +34,15 @@ export async function GET(req: Request) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, req.url));
+    // Map Supabase auth error codes to the short slugs that
+    // /login understands (see ERROR_COPY there). Anything we don't
+    // recognise gets passed through verbatim so we still surface
+    // something — better an ugly message than no message.
+    const msg = error.message.toLowerCase();
+    let slug = encodeURIComponent(error.message);
+    if (msg.includes('expired')) slug = 'expired_token';
+    else if (msg.includes('invalid') && msg.includes('grant')) slug = 'invalid_grant';
+    return NextResponse.redirect(new URL(`/login?error=${slug}`, req.url));
   }
 
   return NextResponse.redirect(new URL(next, req.url));

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Copy, Plus, X, AlertTriangle, ArrowLeft, Trash2 } from 'lucide-react';
+import { Check, Copy, Plus, X, AlertTriangle, ArrowLeft, Trash2, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { extractHost } from '@/lib/utils';
@@ -130,6 +130,14 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
         </Link>
         <div className="flex items-center gap-2">
           {savedAt ? <span className="text-xs text-success font-bold">✓ Saved</span> : null}
+          <Link
+            href={`/widgets/${widget.id}/test`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-ghost h-10 inline-flex items-center gap-1.5 text-xs"
+          >
+            <ExternalLink size={13} /> Test embed
+          </Link>
           <button onClick={save} disabled={saving} className="btn-primary">
             {saving ? 'Saving…' : 'Save changes'}
           </button>
