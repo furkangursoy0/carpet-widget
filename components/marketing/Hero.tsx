@@ -28,7 +28,10 @@ export default function Hero({ onDemo, onCustomize }: { onDemo: () => void; onCu
   const [url, setUrl] = useState('');
 
   function start() {
-    router.push('/signup');
+    // Carry the typed store URL through to signup → onboarding,
+    // so we can prefill it instead of asking again.
+    const trimmed = url.trim();
+    router.push(trimmed ? `/signup?url=${encodeURIComponent(trimmed)}` : '/signup');
   }
 
   return (

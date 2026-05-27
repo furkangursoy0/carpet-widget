@@ -35,7 +35,14 @@ const BOOT_FLAG = '__scenevaBooted__';
 
   fetchConfig(apiBase, key)
     .then((config) => {
+      // Don't render the trigger when the widget is paused or its
+      // monthly quota is exhausted — failing silently here is better
+      // UX than letting shoppers upload a photo only to see a 402.
       if (config.status !== 'active') return;
+      if (config.limit_reached) {
+        console.info('[Sceneva] monthly quota reached — widget hidden');
+        return;
+      }
       whenReady(() => mount(apiBase, key, config));
     })
     .catch((err) => console.warn('[Sceneva] failed to load:', err));

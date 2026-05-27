@@ -75,7 +75,17 @@ export default function Navbar({
           { label: 'Features', onClick: onFeatures },
           { label: 'Install', onClick: onInstall },
           { label: 'Pricing', onClick: onPricing },
-          { label: 'Customize', onClick: onCustomize },
+          {
+            label: 'Customize',
+            // Signed-in users get the real widget editor; everyone
+            // else lands on signup so they can't dead-end on the
+            // unauthenticated builder.
+            onClick: () => {
+              if (authState === 'in') window.location.href = '/widgets';
+              else if (authState === 'out') window.location.href = '/signup';
+              else onCustomize();
+            },
+          },
         ].map(({ label, onClick }) => (
           <button
             key={label}

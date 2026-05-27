@@ -6,9 +6,13 @@ const nextConfig = {
       { protocol: 'https', hostname: '**' },
     ],
   },
-  // CORS headers for /widget.js + /api/* so it loads from customer sites
+  // CORS headers for /widget.js + /api/* so it loads from customer sites.
+  // Plus a noindex header on every non-production deployment (Vercel
+  // sets VERCEL_ENV=preview for branch/PR builds) so Google doesn't
+  // index preview URLs as duplicate content alongside sceneva.com.
   async headers() {
-    return [
+    const isPreview = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production';
+    const headers = [
       {
         source: '/widget/widget.js',
         headers: [
@@ -25,6 +29,13 @@ const nextConfig = {
         ],
       },
     ];
+    if (isPreview) {
+      headers.push({
+        source: '/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      });
+    }
+    return headers;
   },
 };
 

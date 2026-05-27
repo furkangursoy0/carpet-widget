@@ -26,6 +26,17 @@ export async function GET(_req: Request, ctx: { params: { key: string } }) {
   const { data: usage } = await supabase.rpc('current_period_usage', { uid: widget.user_id }).single();
   const limitReached = (usage as any) ? (usage as any).used >= (usage as any).limit_total : false;
 
+  // Treat cancelled / expired / past_due subscriptions as a paused widget
+  // — the widget script will skip rendering the button entirely instead
+  // of letting shoppers tap through to a 402 response.
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('status')
+    .eq('user_id', widget.user_id)
+    .maybeSingle();
+  const subBlocks = sub && ['cancelled', 'expired', 'past_due'].includes((sub as any).status);
+  const effectiveStatus = subBlocks ? 'paused' : widget.status;
+
   const format = widget.format === 'side-tab' ? 'side-tab' : 'floating-button';
   const position = normalizePosition(format, widget.position);
   const shape = widget.button_shape === 'circle' ? 'circle' : 'pill';
@@ -38,7 +49,7 @@ export async function GET(_req: Request, ctx: { params: { key: string } }) {
     border_radius: widget.border_radius,
     button_text: widget.button_text,
     button_shape: shape,
-    status: widget.status,
+    status: effectiveStatus,
     limit_reached: limitReached,
     custom_image_selector: widget.custom_image_selector,
   };

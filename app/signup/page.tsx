@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 
-export default function SignupPage() {
+function SignupInner() {
   const router = useRouter();
+  const params = useSearchParams();
+  // URL preserved from the landing Hero ("Add to my store" with a store URL).
+  // Stashed on the user row so onboarding can prefill store_url without
+  // re-prompting.
+  const preservedUrl = params.get('url') ?? '';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [brandName, setBrandName] = useState('');
@@ -20,26 +25,32 @@ export default function SignupPage() {
     setLoading(true);
     setErr(null);
     const supabase = getBrowserSupabase();
+    const nextPath = preservedUrl ? `/onboarding?url=${encodeURIComponent(preservedUrl)}` : '/onboarding';
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}/auth/callback?next=/onboarding`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         data: { brand_name: brandName },
       },
     });
     setLoading(false);
     if (error) return setErr(error.message);
-    // Save brand_name on the public.users row (the trigger creates the row, we update it)
-    if (data.user?.id && brandName) {
-      await supabase.from('users').update({ brand_name: brandName }).eq('id', data.user.id);
+    // Save brand_name + the URL the user typed on the landing page.
+    if (data.user?.id) {
+      const patch: Record<string, string> = {};
+      if (brandName) patch.brand_name = brandName;
+      if (preservedUrl) patch.store_url = preservedUrl;
+      if (Object.keys(patch).length) {
+        await supabase.from('users').update(patch).eq('id', data.user.id);
+      }
     }
     // If email confirmation is required, show check inbox screen
     if (!data.session) {
       setCheck(true);
       return;
     }
-    router.push('/onboarding');
+    router.push(nextPath);
     router.refresh();
   }
 
@@ -97,5 +108,13 @@ export default function SignupPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupInner />
+    </Suspense>
   );
 }
