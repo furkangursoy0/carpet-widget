@@ -10,7 +10,7 @@
 // white panels.
 
 import {
-  LayoutDashboard, Grid2X2, Activity, Target, CreditCard, Settings,
+  LayoutDashboard, Boxes, CreditCard, Settings,
   ArrowRight,
 } from 'lucide-react';
 
@@ -91,13 +91,14 @@ function DashboardMockup() {
         {/* Sidebar */}
         <div className="w-[150px] p-2.5 border-r border-rail flex flex-col gap-0.5">
           <p className="text-sub text-[9px] font-extrabold tracking-wider uppercase px-2 mb-1.5">Nomad Rugs</p>
+          {/* Mirror the real DashShell nav so the mock doesn't promise
+              pages we don't ship (the prior "Analytics" / "Detection"
+              tabs didn't exist). */}
           {[
             { Icon: LayoutDashboard, label: 'Overview', active: true },
-            { Icon: Grid2X2,        label: 'Widgets' },
-            { Icon: Activity,       label: 'Analytics' },
-            { Icon: Target,         label: 'Detection' },
-            { Icon: CreditCard,     label: 'Billing' },
+            { Icon: Boxes,          label: 'Widgets' },
             { Icon: Settings,       label: 'Settings' },
+            { Icon: CreditCard,     label: 'Billing' },
           ].map(({ Icon, label, active }) => (
             <div
               key={label}

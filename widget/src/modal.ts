@@ -8,7 +8,7 @@
 //   • The triggering element is restored focus on close
 // ═══════════════════════════════════════════════════════════════════
 
-import type { VisualizeResult } from './api';
+import type { VisualizeResult, WidgetLanguage } from './api';
 
 export type ModalApi = {
   open: () => void;
@@ -21,9 +21,56 @@ type Args = {
   accentColor: string;
   productTitle: string;
   productImageUrl: string;
+  language: WidgetLanguage;
   onUpload: (roomBase64: string, dims: { width: number; height: number }) => Promise<VisualizeResult>;
   onDownload: () => void;
   onShare: () => void;
+};
+
+// Per-language modal copy. Keep in sync with WidgetLanguage union in
+// widget/src/api.ts and the StorePreview T map (which renders the
+// same strings for the marketing preview).
+type CopyKeys =
+  | 'kicker' | 'dropTitle' | 'dropSub' | 'browseFiles'
+  | 'generating' | 'generatingSub' | 'previewReady'
+  | 'startOver' | 'shareLink' | 'downloadImage'
+  | 'errorTitle' | 'errorSub' | 'tryAgain'
+  | 'close' | 'privateLink' | 'autoDelete' | 'neverShared'
+  | 'instant' | 'noSignup';
+
+const COPY: Record<WidgetLanguage, Record<CopyKeys, string>> = {
+  English: {
+    kicker: 'VISUALIZE', dropTitle: 'Drop a room photo', dropSub: 'JPG, PNG, WEBP · max 10 MB', browseFiles: 'Browse files',
+    generating: 'Composing your room…', generatingSub: 'Usually takes 8-20 seconds.', previewReady: '✨ Preview ready',
+    startOver: '↺ Start over', shareLink: '↗ Share link', downloadImage: '⬇ Download image',
+    errorTitle: 'Something went wrong', errorSub: 'Please try a different photo.', tryAgain: 'Try again',
+    close: 'Close', privateLink: '🔒 Private link', autoDelete: 'Auto-deletes in 30 days', neverShared: 'Your photo is never shared',
+    instant: '⚡ Instant', noSignup: '✓ No sign-up',
+  },
+  'Türkçe': {
+    kicker: 'GÖRSELLEŞTİR', dropTitle: 'Oda fotoğrafını buraya bırak', dropSub: 'JPG, PNG, WEBP · maks 10 MB', browseFiles: 'Dosya seç',
+    generating: 'Odanız hazırlanıyor…', generatingSub: 'Genelde 8-20 saniye sürer.', previewReady: '✨ Önizleme hazır',
+    startOver: '↺ Baştan başla', shareLink: '↗ Bağlantı paylaş', downloadImage: '⬇ Görseli indir',
+    errorTitle: 'Bir şeyler ters gitti', errorSub: 'Lütfen farklı bir fotoğraf deneyin.', tryAgain: 'Tekrar dene',
+    close: 'Kapat', privateLink: '🔒 Özel bağlantı', autoDelete: '30 gün sonra otomatik silinir', neverShared: 'Fotoğrafınız paylaşılmaz',
+    instant: '⚡ Anında', noSignup: '✓ Üyelik yok',
+  },
+  'Español': {
+    kicker: 'VISUALIZAR', dropTitle: 'Suelta una foto de la habitación', dropSub: 'JPG, PNG, WEBP · máx 10 MB', browseFiles: 'Explorar archivos',
+    generating: 'Componiendo tu habitación…', generatingSub: 'Suele tardar 8-20 segundos.', previewReady: '✨ Vista previa lista',
+    startOver: '↺ Empezar de nuevo', shareLink: '↗ Compartir enlace', downloadImage: '⬇ Descargar imagen',
+    errorTitle: 'Algo salió mal', errorSub: 'Prueba con otra foto.', tryAgain: 'Reintentar',
+    close: 'Cerrar', privateLink: '🔒 Enlace privado', autoDelete: 'Se elimina en 30 días', neverShared: 'Tu foto nunca se comparte',
+    instant: '⚡ Al instante', noSignup: '✓ Sin registro',
+  },
+  'Français': {
+    kicker: 'VISUALISER', dropTitle: 'Déposez une photo de la pièce', dropSub: 'JPG, PNG, WEBP · max 10 Mo', browseFiles: 'Parcourir',
+    generating: 'Composition de votre pièce…', generatingSub: 'Prend habituellement 8-20 secondes.', previewReady: '✨ Aperçu prêt',
+    startOver: '↺ Recommencer', shareLink: '↗ Partager le lien', downloadImage: '⬇ Télécharger l\'image',
+    errorTitle: 'Une erreur est survenue', errorSub: 'Essayez une autre photo.', tryAgain: 'Réessayer',
+    close: 'Fermer', privateLink: '🔒 Lien privé', autoDelete: 'Supprimé après 30 jours', neverShared: 'Votre photo n\'est jamais partagée',
+    instant: '⚡ Instantané', noSignup: '✓ Sans inscription',
+  },
 };
 
 export function createModal(args: Args): ModalApi {
@@ -214,8 +261,9 @@ function readImageDimensions(file: File): Promise<{ width: number; height: numbe
   });
 }
 
-function template({ accentColor, productTitle, productImageUrl }: Args) {
+function template({ accentColor, productTitle, productImageUrl, language }: Args) {
   const a = accentColor;
+  const t = COPY[language] ?? COPY.English;
   return `
     <div style="width:100%;max-width:980px;max-height:96vh;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(15,23,42,0.30);display:flex;flex-direction:column;">
       <!-- Header -->
@@ -223,11 +271,11 @@ function template({ accentColor, productTitle, productImageUrl }: Args) {
         <div style="display:flex;align-items:center;gap:12px;min-width:0;">
           <img data-x="header-thumb" src="${productImageUrl}" style="width:42px;height:42px;border-radius:9px;object-fit:cover;background:#F4F7FB;" alt="">
           <div style="min-width:0;">
-            <div style="font-size:10px;font-weight:800;letter-spacing:0.6px;color:${a};">VISUALIZE</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:0.6px;color:${a};">${t.kicker}</div>
             <div id="sceneva-modal-title" style="font-size:15px;font-weight:800;color:#0F172A;margin-top:2px;">${escapeHtml(productTitle)}</div>
           </div>
         </div>
-        <button data-x="close" aria-label="Close" style="width:32px;height:32px;border-radius:16px;background:#F1F5F9;border:none;cursor:pointer;display:grid;place-items:center;color:#64748B;font-size:18px;">×</button>
+        <button data-x="close" aria-label="${t.close}" style="width:32px;height:32px;border-radius:16px;background:#F1F5F9;border:none;cursor:pointer;display:grid;place-items:center;color:#64748B;font-size:18px;">×</button>
       </div>
 
       <!-- Body -->
@@ -238,14 +286,14 @@ function template({ accentColor, productTitle, productImageUrl }: Args) {
             <div style="width:56px;height:56px;border-radius:28px;background:${a}1A;display:grid;place-items:center;margin:0 auto 16px;">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${a}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </div>
-            <div style="font-size:18px;font-weight:800;color:#0F172A;">Drop a room photo</div>
-            <div style="font-size:13px;color:#64748B;margin-top:6px;">JPG, PNG, WEBP · max 10 MB</div>
+            <div style="font-size:18px;font-weight:800;color:#0F172A;">${t.dropTitle}</div>
+            <div style="font-size:13px;color:#64748B;margin-top:6px;">${t.dropSub}</div>
             <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;">
-              <button data-x="browse" style="height:44px;padding:0 22px;background:${a};color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:13px;">Browse files</button>
+              <button data-x="browse" style="height:44px;padding:0 22px;background:${a};color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-size:13px;">${t.browseFiles}</button>
             </div>
             <input data-x="file" type="file" accept="image/*" style="display:none;">
             <div style="display:flex;justify-content:center;gap:16px;margin-top:18px;color:#94A3B8;font-size:11px;font-weight:600;">
-              <span>⚡ Instant</span><span>✓ No sign-up</span><span>🔒 Private link</span>
+              <span>${t.instant}</span><span>${t.noSignup}</span><span>${t.privateLink}</span>
             </div>
           </div>
         </div>
@@ -256,8 +304,8 @@ function template({ accentColor, productTitle, productImageUrl }: Args) {
             <div style="width:72px;height:72px;border-radius:36px;background:${a}1A;display:grid;place-items:center;margin:0 auto 14px;animation:scenevaPulse 1.4s ease-in-out infinite;">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="${a}"><path d="M12 2l2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/></svg>
             </div>
-            <div style="font-size:16px;font-weight:800;color:#0F172A;">Composing your room…</div>
-            <div style="font-size:13px;color:#64748B;margin-top:6px;">Usually takes 8-20 seconds.</div>
+            <div style="font-size:16px;font-weight:800;color:#0F172A;">${t.generating}</div>
+            <div style="font-size:13px;color:#64748B;margin-top:6px;">${t.generatingSub}</div>
             <div style="width:240px;height:6px;background:#E2E8F0;border-radius:3px;margin:18px auto 0;overflow:hidden;">
               <div style="width:30%;height:100%;background:${a};border-radius:3px;animation:scenevaProgress 2s ease-in-out infinite;"></div>
             </div>
@@ -267,13 +315,13 @@ function template({ accentColor, productTitle, productImageUrl }: Args) {
         <!-- Result -->
         <div data-stage="result" style="display:none;flex:1;flex-direction:column;">
           <div style="flex:1;background:#F4F7FB;position:relative;overflow:hidden;">
-            <img data-x="result-image" style="width:100%;height:100%;object-fit:contain;display:block;" alt="Your room with the rug">
-            <div style="position:absolute;top:14px;left:14px;background:${a}1A;color:${a};padding:6px 12px;border-radius:999px;font-size:11px;font-weight:800;">✨ Preview ready</div>
+            <img data-x="result-image" style="width:100%;height:100%;object-fit:contain;display:block;" alt="">
+            <div style="position:absolute;top:14px;left:14px;background:${a}1A;color:${a};padding:6px 12px;border-radius:999px;font-size:11px;font-weight:800;">${t.previewReady}</div>
           </div>
           <div style="display:flex;gap:10px;padding:14px 20px;border-top:1px solid #EBF0F7;">
-            <button data-x="startover" style="flex:1;height:42px;border:1px solid #E4EAF3;background:#fff;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">↺ Start over</button>
-            <button data-x="share" style="flex:1;height:42px;border:1px solid #E4EAF3;background:#fff;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">↗ Share link</button>
-            <button data-x="download" style="flex:2;height:42px;background:${a};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">⬇ Download image</button>
+            <button data-x="startover" style="flex:1;height:42px;border:1px solid #E4EAF3;background:#fff;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">${t.startOver}</button>
+            <button data-x="share" style="flex:1;height:42px;border:1px solid #E4EAF3;background:#fff;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">${t.shareLink}</button>
+            <button data-x="download" style="flex:2;height:42px;background:${a};color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">${t.downloadImage}</button>
           </div>
         </div>
 
@@ -281,16 +329,16 @@ function template({ accentColor, productTitle, productImageUrl }: Args) {
         <div data-stage="error" style="display:none;flex:1;align-items:center;justify-content:center;padding:36px 24px;">
           <div style="text-align:center;max-width:380px;">
             <div style="width:56px;height:56px;border-radius:28px;background:#FEE2E2;display:grid;place-items:center;margin:0 auto 14px;color:#DC2626;font-size:24px;">!</div>
-            <div style="font-size:16px;font-weight:800;color:#0F172A;">Something went wrong</div>
-            <div data-x="error-msg" style="font-size:13px;color:#64748B;margin-top:6px;">Please try a different photo.</div>
-            <button data-x="startover" style="margin-top:18px;height:42px;padding:0 22px;background:${a};color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px;">Try again</button>
+            <div style="font-size:16px;font-weight:800;color:#0F172A;">${t.errorTitle}</div>
+            <div data-x="error-msg" style="font-size:13px;color:#64748B;margin-top:6px;">${t.errorSub}</div>
+            <button data-x="startover" style="margin-top:18px;height:42px;padding:0 22px;background:${a};color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px;">${t.tryAgain}</button>
           </div>
         </div>
       </div>
 
       <!-- Footer -->
       <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 20px;border-top:1px solid #EBF0F7;background:#FBFCFE;color:#94A3B8;font-size:11px;font-weight:600;">
-        <span>🔒 Private link</span><span>·</span><span>Auto-deletes in 30 days</span><span>·</span><span>Your photo is never shared</span>
+        <span>${t.privateLink}</span><span>·</span><span>${t.autoDelete}</span><span>·</span><span>${t.neverShared}</span>
       </div>
     </div>
 

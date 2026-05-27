@@ -43,10 +43,52 @@ const BOOT_FLAG = '__scenevaBooted__';
         console.info('[Sceneva] monthly quota reached — widget hidden');
         return;
       }
+
+      // Expose a tiny event bus so merchants (and the optional
+      // custom_script field) can react to widget lifecycle events
+      // from their own analytics stack. Kept intentionally minimal —
+      // just `on(event, cb)` and `off(event, cb)`.
+      installEventBus();
+
+      // Run the merchant-supplied custom_script (if any) in a try/catch
+      // so a typo in their snippet never breaks the widget. The script
+      // executes once at mount and has access to `window.sceneva`.
+      if (config.custom_script) {
+        try {
+          // eslint-disable-next-line no-new-func
+          new Function('sceneva', 'config', config.custom_script)((window as any).sceneva, config);
+        } catch (err) {
+          console.warn('[Sceneva] custom_script error:', err);
+        }
+      }
+
       whenReady(() => mount(apiBase, key, config));
     })
     .catch((err) => console.warn('[Sceneva] failed to load:', err));
 })();
+
+// Minimal pub/sub bus exposed as `window.sceneva`.
+// We attach lazily and idempotently so two embed snippets on the same
+// page (we discourage it, but it happens) share a single bus.
+function installEventBus() {
+  const w = window as any;
+  if (w.sceneva && w.sceneva.__busInstalled) return;
+  const listeners: Record<string, Array<(payload: any) => void>> = {};
+  w.sceneva = {
+    __busInstalled: true,
+    on(event: string, cb: (payload: any) => void) {
+      (listeners[event] = listeners[event] || []).push(cb);
+    },
+    off(event: string, cb: (payload: any) => void) {
+      listeners[event] = (listeners[event] || []).filter((x) => x !== cb);
+    },
+    emit(event: string, payload: any) {
+      (listeners[event] || []).forEach((cb) => {
+        try { cb(payload); } catch (e) { console.warn('[Sceneva] listener error:', e); }
+      });
+    },
+  };
+}
 
 // `document.currentScript` is reliable for classic scripts (including
 // async ones), but falls back to querying the DOM if the runtime ever
@@ -107,13 +149,16 @@ async function mount(apiBase: string, key: string, config: WidgetConfig) {
       product_image_url: product.imageUrl,
       product_title: product.title,
     });
+    const w = window as any;
+    w.sceneva?.emit?.('opened', { product: { title: product.title, imageUrl: product.imageUrl, pageUrl: location.href } });
     if (!modal) {
       modal = createModal({
         accentColor: config.accent_color,
         productTitle: product.title,
         productImageUrl: product.imageUrl,
+        language: config.language,
         onUpload: async (roomBase64, dims) => {
-          return apiVisualize(apiBase, {
+          const result = await apiVisualize(apiBase, {
             widget_key: key,
             room_image_base64: roomBase64,
             product_image_url: product.imageUrl,
@@ -122,23 +167,38 @@ async function mount(apiBase: string, key: string, config: WidgetConfig) {
             room_width: dims.width,
             room_height: dims.height,
           });
+          // Fire a public 'generated' / 'error' event for analytics hooks.
+          const w = window as any;
+          if (w.sceneva?.emit) {
+            w.sceneva.emit(result.ok ? 'generated' : 'error', {
+              product: { title: product.title, imageUrl: product.imageUrl, pageUrl: location.href },
+              result,
+            });
+          }
+          return result;
         },
-        onDownload: () =>
+        onDownload: () => {
           apiEvent(apiBase, {
             widget_key: key,
             event_type: 'downloaded',
             page_url: location.href,
             product_image_url: product.imageUrl,
             product_title: product.title,
-          }),
-        onShare: () =>
+          });
+          const w = window as any;
+          w.sceneva?.emit?.('downloaded', { product: { title: product.title, imageUrl: product.imageUrl, pageUrl: location.href } });
+        },
+        onShare: () => {
           apiEvent(apiBase, {
             widget_key: key,
             event_type: 'shared',
             page_url: location.href,
             product_image_url: product.imageUrl,
             product_title: product.title,
-          }),
+          });
+          const w = window as any;
+          w.sceneva?.emit?.('shared', { product: { title: product.title, imageUrl: product.imageUrl, pageUrl: location.href } });
+        },
       });
     } else {
       modal.setProduct({ title: product.title, imageUrl: product.imageUrl });

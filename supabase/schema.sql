@@ -63,9 +63,16 @@ create table if not exists public.widgets (
   status text default 'active',                    -- 'active' | 'paused'
   allowed_domains text[] default '{}',             -- e.g. {'nomadrugs.com','www.nomadrugs.com'}
   custom_image_selector text,                      -- optional CSS selector for product image
+  language text default 'English',                 -- modal copy language: English|Türkçe|Español|Français
+  custom_script text,                              -- merchant-supplied JS, executed once on widget mount (analytics hooks)
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Idempotent backfill for stores upgrading from the v1 schema where
+-- the widgets table predates language + custom_script. Safe to re-run.
+alter table public.widgets add column if not exists language text default 'English';
+alter table public.widgets add column if not exists custom_script text;
 
 alter table public.widgets enable row level security;
 

@@ -2,6 +2,8 @@
 // Widget → Sceneva API client (browser)
 // ═══════════════════════════════════════════════════════════════════
 
+export type WidgetLanguage = 'English' | 'Türkçe' | 'Español' | 'Français';
+
 export type WidgetConfig = {
   embed_key: string;
   format: 'floating-button' | 'side-tab';
@@ -13,6 +15,8 @@ export type WidgetConfig = {
   status: 'active' | 'paused';
   limit_reached: boolean;
   custom_image_selector: string | null;
+  language: WidgetLanguage;
+  custom_script: string | null;
 };
 
 export type VisualizeOk = { ok: true; result_image_url: string; generation_id: string };

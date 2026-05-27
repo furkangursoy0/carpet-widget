@@ -33,9 +33,15 @@ export type DbWidget = {
   status: 'active' | 'paused';
   allowed_domains: string[];
   custom_image_selector: string | null;
+  language: WidgetLanguage;
+  custom_script: string | null;
   created_at: string;
   updated_at: string;
 };
+
+// Languages the widget modal can render in. Keep this list in sync with
+// the LANG dictionary in widget/src/modal.ts and StorePreview's T map.
+export type WidgetLanguage = 'English' | 'Türkçe' | 'Español' | 'Français';
 
 export type DbSubscription = {
   id: string;
@@ -79,6 +85,11 @@ export type WidgetConfig = {
   status: 'active' | 'paused';
   limit_reached: boolean;
   custom_image_selector: string | null;
+  language: WidgetLanguage;
+  // custom_script is sent down but executed by the widget script only —
+  // never injected into the merchant page directly by us. The widget
+  // wraps it in a try/catch so a bad snippet can't break the modal.
+  custom_script: string | null;
 };
 
 export type VisualizeRequest = {

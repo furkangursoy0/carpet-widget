@@ -15,7 +15,7 @@ export async function GET(_req: Request, ctx: { params: { key: string } }) {
   const supabase = getServiceSupabase();
   const { data: widget } = await supabase
     .from('widgets')
-    .select('embed_key, format, position, accent_color, border_radius, button_text, button_shape, status, user_id, custom_image_selector')
+    .select('embed_key, format, position, accent_color, border_radius, button_text, button_shape, status, user_id, custom_image_selector, language, custom_script')
     .eq('embed_key', ctx.params.key)
     .maybeSingle();
 
@@ -52,6 +52,8 @@ export async function GET(_req: Request, ctx: { params: { key: string } }) {
     status: effectiveStatus,
     limit_reached: limitReached,
     custom_image_selector: widget.custom_image_selector,
+    language: (widget.language as any) ?? 'English',
+    custom_script: widget.custom_script ?? null,
   };
 
   return NextResponse.json(config, {

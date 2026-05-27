@@ -1,7 +1,8 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Users, Download, Target, Monitor, Smartphone, Tablet, ArrowUpRight, Sparkles, Share2, Filter } from 'lucide-react';
+import { Eye, Users, Download, Target, Monitor, Smartphone, Tablet, Sparkles, Share2, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
 
 type EventRow = {
@@ -14,79 +15,92 @@ type EventRow = {
 
 type WidgetSummary = { id: string; name: string };
 
+type Period = '7d' | '30d' | '90d';
+
 export default function OverviewClient({
   events,
+  previousEvents,
   used,
   limit,
   periodEnd,
   widgets,
   selectedWidget,
+  period,
+  days,
 }: {
   events: EventRow[];
+  previousEvents: EventRow[];
   used: number;
   limit: number;
   periodEnd: string | null;
   widgets: WidgetSummary[];
   selectedWidget: string;
+  period: Period;
+  days: number;
 }) {
   const router = useRouter();
 
-  function changeFilter(next: string) {
+  function updateParam(key: string, next: string, def: string) {
     const url = new URL(window.location.href);
-    if (next === 'all') url.searchParams.delete('widget');
-    else url.searchParams.set('widget', next);
+    if (next === def) url.searchParams.delete(key);
+    else url.searchParams.set(key, next);
     router.push(`${url.pathname}${url.search}`);
   }
-  const generated = events.filter((e) => e.event_type === 'generated').length;
-  const sessions = new Set(events.map((e) => `${e.page_url}-${e.created_at.slice(0, 10)}`)).size;
-  const downloads = events.filter((e) => e.event_type === 'downloaded').length;
-  // Compute detection success = generated / (generated + errors)
-  const errors = events.filter((e) => e.event_type === 'error').length;
-  const detectRate = generated + errors === 0 ? 0 : (generated / (generated + errors)) * 100;
 
-  const devices = events.reduce((acc, e) => {
-    const d = (e.device ?? 'desktop') as 'desktop' | 'mobile' | 'tablet';
-    acc[d] = (acc[d] ?? 0) + 1;
-    return acc;
-  }, { desktop: 0, mobile: 0, tablet: 0 } as Record<'desktop' | 'mobile' | 'tablet', number>);
-  const totalDev = Math.max(1, devices.desktop + devices.mobile + devices.tablet);
-
-  const topProducts = aggregateBy(events.filter((e) => e.event_type === 'generated'), 'product_title');
-  const topPages = aggregateBy(events.filter((e) => e.event_type === 'generated'), 'page_url');
+  const stats = useMemo(() => computeStats(events), [events]);
+  const prevStats = useMemo(() => computeStats(previousEvents), [previousEvents]);
+  const daily = useMemo(() => buildDailySeries(events, days), [events, days]);
 
   const usagePct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
 
   return (
     <>
-      {/* Widget filter — only useful once a merchant has 2+ widgets,
-          but always visible (with a single "All widgets" option) so
-          there's no UI jump after adding the second widget. */}
-      {widgets.length > 1 ? (
-        <div className="card p-3 flex items-center gap-3">
-          <Filter size={14} className="text-sub flex-shrink-0" />
-          <span className="text-xs font-bold text-sub">Filter analytics by</span>
-          <select
-            value={selectedWidget}
-            onChange={(e) => changeFilter(e.target.value)}
-            className="flex-1 sm:flex-initial min-w-[180px] h-9 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/15 outline-none"
-          >
-            <option value="all">All widgets</option>
-            {widgets.map((w) => (
-              <option key={w.id} value={w.id}>{w.name || 'Untitled widget'}</option>
-            ))}
-          </select>
-          <p className="text-xs text-sub hidden sm:block">
-            Plan usage below stays whole-account (quota is per subscription).
-          </p>
-        </div>
-      ) : null}
+      {/* Filter row: widget switcher (if 2+) + period selector */}
+      <div className="card p-3 flex flex-wrap items-center gap-3">
+        {widgets.length > 1 ? (
+          <>
+            <Filter size={14} className="text-sub flex-shrink-0" />
+            <span className="text-xs font-bold text-sub">Widget</span>
+            <select
+              value={selectedWidget}
+              onChange={(e) => updateParam('widget', e.target.value, 'all')}
+              className="min-w-[180px] h-9 rounded-lg border border-line bg-white px-3 text-sm font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/15 outline-none"
+            >
+              <option value="all">All widgets</option>
+              {widgets.map((w) => (
+                <option key={w.id} value={w.id}>{w.name || 'Untitled widget'}</option>
+              ))}
+            </select>
+            <span className="text-line">·</span>
+          </>
+        ) : null}
 
-      {/* KPI Row */}
+        <span className="text-xs font-bold text-sub">Period</span>
+        <div className="inline-flex rounded-lg border border-line p-0.5">
+          {(['7d', '30d', '90d'] as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => updateParam('period', p, '30d')}
+              className={`h-7 px-3 rounded-md text-xs font-extrabold transition-colors ${
+                period === p ? 'bg-bg text-ink' : 'text-sub hover:text-ink'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs text-sub ml-auto hidden sm:block">
+          Plan usage stays whole-account (quota is per subscription).
+        </p>
+      </div>
+
+      {/* KPI Row with trend deltas vs previous period */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Room previews generated" value={formatNumber(generated)} Icon={Eye} />
-        <KpiCard label="Unique sessions" value={formatNumber(sessions)} Icon={Users} />
-        <KpiCard label="Downloads" value={formatNumber(downloads)} Icon={Download} />
-        <KpiCard label="Detection success rate" value={`${detectRate.toFixed(1)}%`} Icon={Target} />
+        <KpiCard label="Room previews generated" value={formatNumber(stats.generated)} delta={pctDelta(stats.generated, prevStats.generated)} Icon={Eye} />
+        <KpiCard label="Unique sessions" value={formatNumber(stats.sessions)} delta={pctDelta(stats.sessions, prevStats.sessions)} Icon={Users} />
+        <KpiCard label="Downloads" value={formatNumber(stats.downloads)} delta={pctDelta(stats.downloads, prevStats.downloads)} Icon={Download} />
+        <KpiCard label="Detection success" value={`${stats.detectRate.toFixed(1)}%`} delta={pctDelta(stats.detectRate, prevStats.detectRate, true)} Icon={Target} />
       </div>
 
       {/* Plan usage */}
@@ -112,16 +126,47 @@ export default function OverviewClient({
         </div>
       </div>
 
+      {/* Daily previews chart */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-extrabold">Previews per day</h3>
+            <p className="text-xs text-sub mt-0.5">
+              {daily.peakLabel ? `Peak ${daily.peakLabel} · ${daily.peakValue}` : `Last ${days} days`}
+            </p>
+          </div>
+          <p className="text-xs font-bold text-sub">{formatNumber(stats.generated)} total</p>
+        </div>
+        <div className="h-32 flex items-end gap-1">
+          {daily.series.map((d, i) => {
+            const h = daily.peakValue > 0 ? Math.max(2, (d.value / daily.peakValue) * 100) : 2;
+            const isPeak = d.value === daily.peakValue && daily.peakValue > 0;
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-sm transition-all hover:opacity-90 relative group"
+                style={{ height: `${h}%`, backgroundColor: isPeak ? '#2458F5' : 'rgba(36,88,245,0.5)' }}
+                title={`${d.label}: ${d.value}`}
+              >
+                <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-ink bg-white border border-line rounded px-1.5 py-0.5 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap shadow-sm">
+                  {d.label} · {d.value}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Device + Top products */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-5">
           <h3 className="text-sm font-extrabold mb-4">Device breakdown</h3>
           {[
-            { Icon: Monitor, label: 'Desktop', count: devices.desktop, color: '#2458F5' },
-            { Icon: Smartphone, label: 'Mobile', count: devices.mobile, color: '#7C3AED' },
-            { Icon: Tablet, label: 'Tablet', count: devices.tablet, color: '#0EA5A4' },
+            { Icon: Monitor, label: 'Desktop', count: stats.devices.desktop, color: '#2458F5' },
+            { Icon: Smartphone, label: 'Mobile', count: stats.devices.mobile, color: '#7C3AED' },
+            { Icon: Tablet, label: 'Tablet', count: stats.devices.tablet, color: '#0EA5A4' },
           ].map(({ Icon, label, count, color }) => {
-            const pct = (count / totalDev) * 100;
+            const pct = (count / stats.totalDev) * 100;
             return (
               <div key={label} className="flex items-center gap-3 py-2.5">
                 <Icon size={14} className="text-sub" />
@@ -139,12 +184,12 @@ export default function OverviewClient({
           <div className="px-5 py-4 border-b border-rail">
             <h3 className="text-sm font-extrabold">Top visualized products</h3>
           </div>
-          {topProducts.length === 0 ? (
+          {stats.topProducts.length === 0 ? (
             <div className="p-8 text-center text-sm text-sub">
               No data yet — once shoppers start visualizing, top products appear here.
             </div>
           ) : (
-            topProducts.slice(0, 5).map((p, i, arr) => (
+            stats.topProducts.slice(0, 5).map((p, i, arr) => (
               <div key={p.key} className={`flex items-center justify-between px-5 py-3 ${i < arr.length - 1 ? 'border-b border-rail' : ''}`}>
                 <span className="text-sm font-semibold truncate flex-1 min-w-0 pr-3">{p.key}</span>
                 <span className="text-sm font-bold text-sub">{p.count}</span>
@@ -158,7 +203,7 @@ export default function OverviewClient({
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-rail flex items-center justify-between">
           <h3 className="text-sm font-extrabold">Recent activity</h3>
-          <span className="text-xs text-sub">Last 30 days</span>
+          <span className="text-xs text-sub">Last {days} days</span>
         </div>
         {events.length === 0 ? (
           <div className="p-12 text-center">
@@ -187,7 +232,64 @@ export default function OverviewClient({
   );
 }
 
-function KpiCard({ label, value, Icon }: { label: string; value: string; Icon: any }) {
+// ─── stats helpers ────────────────────────────────────────────────
+
+function computeStats(events: EventRow[]) {
+  const generated = events.filter((e) => e.event_type === 'generated').length;
+  const sessions = new Set(events.map((e) => `${e.page_url}-${e.created_at.slice(0, 10)}`)).size;
+  const downloads = events.filter((e) => e.event_type === 'downloaded').length;
+  const errors = events.filter((e) => e.event_type === 'error').length;
+  const detectRate = generated + errors === 0 ? 0 : (generated / (generated + errors)) * 100;
+  const devices = events.reduce((acc, e) => {
+    const d = (e.device ?? 'desktop') as 'desktop' | 'mobile' | 'tablet';
+    acc[d] = (acc[d] ?? 0) + 1;
+    return acc;
+  }, { desktop: 0, mobile: 0, tablet: 0 } as Record<'desktop' | 'mobile' | 'tablet', number>);
+  const totalDev = Math.max(1, devices.desktop + devices.mobile + devices.tablet);
+  const topProducts = aggregateBy(events.filter((e) => e.event_type === 'generated'), 'product_title');
+  return { generated, sessions, downloads, errors, detectRate, devices, totalDev, topProducts };
+}
+
+// Build a per-day series across the chosen window (zero-filled).
+function buildDailySeries(events: EventRow[], days: number) {
+  const counts = new Map<string, number>();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  // Seed every day with 0 so the chart shows a continuous baseline
+  // even when several days have no traffic.
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86_400_000);
+    counts.set(d.toISOString().slice(0, 10), 0);
+  }
+  for (const e of events) {
+    if (e.event_type !== 'generated') continue;
+    const k = e.created_at.slice(0, 10);
+    if (counts.has(k)) counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  const series = [...counts.entries()].map(([key, value]) => ({
+    label: new Date(key + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    value,
+  }));
+  const peak = series.reduce((m, d) => (d.value > m.value ? d : m), { label: '', value: 0 });
+  return { series, peakValue: peak.value, peakLabel: peak.label };
+}
+
+function pctDelta(current: number, previous: number, isRate = false): { value: number; label: string; dir: 'up' | 'down' | 'flat' } | null {
+  if (previous === 0 && current === 0) return null;
+  if (previous === 0) return { value: 100, label: 'new', dir: 'up' };
+  const pct = ((current - previous) / previous) * 100;
+  const abs = Math.abs(pct);
+  if (abs < 0.5) return { value: 0, label: 'flat', dir: 'flat' };
+  return {
+    value: pct,
+    label: `${pct >= 0 ? '+' : ''}${pct.toFixed(isRate ? 1 : 0)}%`,
+    dir: pct >= 0 ? 'up' : 'down',
+  };
+}
+
+// ─── ui helpers ───────────────────────────────────────────────────
+
+function KpiCard({ label, value, delta, Icon }: { label: string; value: string; delta: ReturnType<typeof pctDelta>; Icon: any }) {
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-2">
@@ -197,6 +299,17 @@ function KpiCard({ label, value, Icon }: { label: string; value: string; Icon: a
         </div>
       </div>
       <p className="text-2xl font-extrabold tracking-tight">{value}</p>
+      {delta ? (
+        <div className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold ${
+          delta.dir === 'up' ? 'text-success' : delta.dir === 'down' ? 'text-danger' : 'text-sub'
+        }`}>
+          {delta.dir === 'up' ? <TrendingUp size={11} /> : delta.dir === 'down' ? <TrendingDown size={11} /> : <Minus size={11} />}
+          {delta.label}
+          <span className="text-sub font-semibold">vs previous</span>
+        </div>
+      ) : (
+        <p className="mt-1.5 text-[11px] text-sub font-semibold">No prior data</p>
+      )}
     </div>
   );
 }

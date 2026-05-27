@@ -6,7 +6,9 @@ import { Check, Copy, Plus, X, AlertTriangle, ArrowLeft, Trash2, ExternalLink } 
 import Link from 'next/link';
 import { getBrowserSupabase } from '@/lib/supabase-browser';
 import { extractHost } from '@/lib/utils';
-import type { DbWidget, WidgetFormat, WidgetPosition, ButtonShape } from '@/lib/types';
+import type { DbWidget, WidgetFormat, WidgetPosition, ButtonShape, WidgetLanguage } from '@/lib/types';
+
+const LANGUAGES: WidgetLanguage[] = ['English', 'Türkçe', 'Español', 'Français'];
 import StorePreview from '@/components/marketing/StorePreview';
 
 const ACCENTS = ['#2458F5', '#0EA5A4', '#7C3AED', '#F15A24', '#E9306A', '#0F172A'];
@@ -25,7 +27,9 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
   const [domains, setDomains] = useState<string[]>(widget.allowed_domains ?? []);
   const [newDomain, setNewDomain] = useState('');
   const [customSelector, setCustomSelector] = useState(widget.custom_image_selector ?? '');
-  const [showAdvanced, setShowAdvanced] = useState(Boolean(widget.custom_image_selector));
+  const [language, setLanguage] = useState<WidgetLanguage>(widget.language ?? 'English');
+  const [customScript, setCustomScript] = useState(widget.custom_script ?? '');
+  const [showAdvanced, setShowAdvanced] = useState(Boolean(widget.custom_image_selector) || Boolean(widget.custom_script));
   const [embedKey, setEmbedKey] = useState(widget.embed_key);
   const [previewState, setPreviewState] = useState<'Default' | 'Open' | 'Result'>('Default');
 
@@ -72,6 +76,8 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
         status,
         allowed_domains: domains,
         custom_image_selector: customSelector.trim() || null,
+        language,
+        custom_script: customScript.trim() || null,
       })
       .eq('id', widget.id);
     setSaving(false);
@@ -212,6 +218,20 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
               </div>
 
               <div>
+                <label className="label">Modal language</label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as WidgetLanguage)}
+                  className="input max-w-sm"
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+                <p className="help">Controls the upload/result modal copy shoppers see. Button label above stays exactly as you typed it.</p>
+              </div>
+
+              <div>
                 <label className="label">Widget format</label>
                 <div className="grid grid-cols-2 gap-3 max-w-sm">
                   {(['floating-button', 'side-tab'] as const).map((f) => (
@@ -333,20 +353,36 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
             >
               <div>
                 <h2 className="text-base font-extrabold">Advanced</h2>
-                <p className="text-sm text-sub mt-1">Pin a custom CSS selector for product detection.</p>
+                <p className="text-sm text-sub mt-1">Custom product selector and analytics hook script.</p>
               </div>
               <span className="text-sub text-xl">{showAdvanced ? '−' : '+'}</span>
             </button>
             {showAdvanced ? (
-              <div className="mt-5 pt-5 border-t border-rail">
-                <label className="label">Custom product image selector</label>
-                <input
-                  className="input font-mono text-sm"
-                  value={customSelector}
-                  onChange={(e) => setCustomSelector(e.target.value)}
-                  placeholder=".my-theme-product-photo img"
-                />
-                <p className="help">Tried before all built-in selectors.</p>
+              <div className="mt-5 pt-5 border-t border-rail space-y-5">
+                <div>
+                  <label className="label">Custom product image selector</label>
+                  <input
+                    className="input font-mono text-sm"
+                    value={customSelector}
+                    onChange={(e) => setCustomSelector(e.target.value)}
+                    placeholder=".my-theme-product-photo img"
+                  />
+                  <p className="help">Tried before all built-in selectors. Leave empty for auto-detection.</p>
+                </div>
+
+                <div>
+                  <label className="label">Custom script (analytics hooks)</label>
+                  <textarea
+                    className="input font-mono text-xs leading-relaxed min-h-[140px]"
+                    value={customScript}
+                    onChange={(e) => setCustomScript(e.target.value)}
+                    placeholder={`// Runs once on widget mount with two args: (sceneva, config).\n// Listen for events and forward them to your analytics stack.\nsceneva.on('generated', (e) => {\n  window.dataLayer?.push({ event: 'sceneva_generated', product: e.product.title });\n});`}
+                    spellCheck={false}
+                  />
+                  <p className="help">
+                    Events: <code>opened</code>, <code>generated</code>, <code>error</code>, <code>downloaded</code>, <code>shared</code>. Each payload includes <code>{'{product: {title, imageUrl, pageUrl}}'}</code>. Errors in your script are caught and logged — they never break the widget.
+                  </p>
+                </div>
               </div>
             ) : null}
           </div>
@@ -392,7 +428,7 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
               buttonText={buttonText}
               widgetMode={'Light' as any}
               previewState={previewState}
-              language={'English' as any}
+              language={language as any}
               forceInline={false}
             />
           </div>
