@@ -143,9 +143,13 @@ export default function StorePreview({
             Floating · {floatingPosition}
           </span>
           <div
-            className="min-w-[270px] h-14 flex items-center justify-center gap-3 px-5 shadow-brand"
+            className="min-w-[270px] h-14 flex items-center justify-center gap-3 px-5"
             style={{
               backgroundColor: accent,
+              // Use the chosen accent for the glow instead of the
+              // hardcoded blue shadow-brand utility — otherwise a
+              // purple button still casts a blue halo.
+              boxShadow: `0 8px 28px ${hexToRgba(accent, 0.35)}`,
               borderRadius: floatingShape === 'Circle' ? 9999 : floatingRadius,
               minWidth: floatingShape === 'Circle' ? 58 : 270,
             }}
@@ -297,4 +301,16 @@ function ResultModal({ accent, t, widgetMode }: { accent: string; t: any; widget
       )}
     </DraggablePanel>
   );
+}
+
+// Convert #RRGGBB (or #RGB) to an rgba() string. Lets us tint shadows
+// with the merchant's accent color instead of a fixed blue.
+function hexToRgba(hex: string, alpha: number): string {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return `rgba(36, 88, 245, ${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

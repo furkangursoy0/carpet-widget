@@ -13,6 +13,16 @@ import StorePreview from '@/components/marketing/StorePreview';
 
 const ACCENTS = ['#2458F5', '#0EA5A4', '#7C3AED', '#F15A24', '#E9306A', '#0F172A'];
 
+// Default product-page button label per language. Used to populate
+// the field on first set + to auto-translate when the merchant
+// switches language IF they haven't already customised the text.
+const DEFAULT_BUTTON_LABEL: Record<WidgetLanguage, string> = {
+  English: 'See this rug in your room',
+  'Türkçe': 'Halıyı odanızda görün',
+  'Español': 'Mira esta alfombra en tu habitación',
+  'Français': 'Voyez ce tapis chez vous',
+};
+
 export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
   const router = useRouter();
 
@@ -185,24 +195,75 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
             <div className="space-y-5">
               <div>
                 <label className="label">Accent color</label>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {ACCENTS.map((c) => (
                     <button
                       key={c}
+                      type="button"
                       onClick={() => setAccent(c)}
                       className={`w-10 h-10 rounded-lg grid place-items-center transition-transform hover:scale-110 ${accent === c ? 'ring-4 ring-offset-2 ring-brand/30 scale-110' : ''}`}
                       style={{ backgroundColor: c }}
+                      aria-label={`Use ${c}`}
                     >
                       {accent === c ? <Check size={13} color="white" strokeWidth={3} /> : null}
                     </button>
                   ))}
+                  {/* Custom color: hidden native picker hooked to a
+                      labelled swatch so the field looks like the
+                      presets but opens the OS color picker on click.
+                      If the chosen value isn't one of the presets we
+                      show a checkmark to signal it's the active one. */}
+                  <label
+                    className={`relative w-10 h-10 rounded-lg border-2 border-dashed border-line bg-white grid place-items-center cursor-pointer hover:border-sub/50 ${!ACCENTS.includes(accent) ? 'ring-4 ring-offset-2 ring-brand/30' : ''}`}
+                    style={!ACCENTS.includes(accent) ? { backgroundColor: accent, borderColor: 'transparent' } : undefined}
+                    aria-label="Pick a custom color"
+                  >
+                    {!ACCENTS.includes(accent) ? (
+                      <Check size={13} color="white" strokeWidth={3} />
+                    ) : (
+                      <span className="text-sub text-xl font-semibold leading-none">+</span>
+                    )}
+                    <input
+                      type="color"
+                      value={accent}
+                      onChange={(e) => setAccent(e.target.value)}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </label>
+                  <span className="text-xs text-sub font-semibold ml-1">
+                    {ACCENTS.includes(accent) ? 'or pick custom →' : <code className="font-mono">{accent.toUpperCase()}</code>}
+                  </span>
                 </div>
+              </div>
+
+              <div>
+                <label className="label">Modal language</label>
+                <select
+                  value={language}
+                  onChange={(e) => {
+                    const next = e.target.value as WidgetLanguage;
+                    // Translate the button label alongside the modal —
+                    // but only if it's still the default of the prior
+                    // language. A merchant who typed custom copy keeps
+                    // it untouched.
+                    if (buttonText.trim() === DEFAULT_BUTTON_LABEL[language].trim()) {
+                      setButtonText(DEFAULT_BUTTON_LABEL[next]);
+                    }
+                    setLanguage(next);
+                  }}
+                  className="input max-w-sm"
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+                <p className="help">Sets both the modal copy and the default button label below.</p>
               </div>
 
               <div>
                 <label className="label">Button label</label>
                 <input className="input" value={buttonText} onChange={(e) => setButtonText(e.target.value.slice(0, 40))} maxLength={40} />
-                <p className="help">Up to 40 characters.</p>
+                <p className="help">Up to 40 characters. Stays exactly as you type it.</p>
               </div>
 
               <div>
@@ -215,20 +276,6 @@ export default function WidgetEditorClient({ widget }: { widget: DbWidget }) {
                   onChange={(e) => setBorderRadius(Number(e.target.value))}
                   className="w-full accent-brand"
                 />
-              </div>
-
-              <div>
-                <label className="label">Modal language</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value as WidgetLanguage)}
-                  className="input max-w-sm"
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l} value={l}>{l}</option>
-                  ))}
-                </select>
-                <p className="help">Controls the upload/result modal copy shoppers see. Button label above stays exactly as you typed it.</p>
               </div>
 
               <div>

@@ -11,24 +11,25 @@ export default async function OnboardingPage() {
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single();
   if (profile?.onboarded) redirect('/overview');
 
-  // Ensure a widget row exists (so we have an embed_key to show)
+  // Don't auto-create a widget on page mount. If the user skips the
+  // wizard from step 1 we want them to land on /widgets with a clean
+  // empty state, not a phantom widget they didn't ask for. The widget
+  // row is created when they hit Continue on step 1 (saveStoreStep).
+  // If a row already exists (e.g. they returned to onboarding after
+  // bouncing) we surface its embed_key.
   const svc = getServiceSupabase();
-  const { data: existing } = await svc.from('widgets').select('id, embed_key').eq('user_id', user.id).limit(1).maybeSingle();
-  let embedKey = existing?.embed_key as string | undefined;
-  if (!embedKey) {
-    const { data: created } = await svc
-      .from('widgets')
-      .insert({ user_id: user.id, name: 'Main widget' })
-      .select('embed_key')
-      .single();
-    embedKey = created?.embed_key;
-  }
+  const { data: existing } = await svc
+    .from('widgets')
+    .select('embed_key')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle();
 
   return (
     <OnboardingClient
       initialBrandName={profile?.brand_name ?? ''}
       initialStoreUrl={profile?.store_url ?? ''}
-      embedKey={embedKey ?? ''}
+      embedKey={(existing?.embed_key as string | undefined) ?? ''}
     />
   );
 }

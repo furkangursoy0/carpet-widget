@@ -38,10 +38,46 @@ export default function OnboardingClient({
   const [buttonText, setButtonText] = useState('See this rug in your room');
   const [previewState, setPreviewState] = useState<'Default' | 'Open' | 'Result'>('Default');
 
+  // The embed key may not exist yet — we create the widget lazily on
+  // step 1's Continue so the user can still abort with Skip from the
+  // header without leaving a phantom widget behind.
+  const [currentEmbedKey, setCurrentEmbedKey] = useState(embedKey);
+
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const embedSnippet = `<script async\n  src="${process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL ?? 'https://app.sceneva.com/widget/widget.js'}"\n  data-sceneva-key="${embedKey}">\n</script>`;
+  const embedSnippet = `<script async\n  src="${process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL ?? 'https://app.sceneva.com/widget/widget.js'}"\n  data-sceneva-key="${currentEmbedKey}">\n</script>`;
+
+  // Idempotently ensures a widget row exists for this user, returning
+  // the freshly-fetched embed_key. Used by every "save" step so that
+  // even returning users with no widget yet get one wired up here.
+  async function ensureWidget(): Promise<string | null> {
+    if (currentEmbedKey) return currentEmbedKey;
+    const supabase = getBrowserSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    // Race-safe lookup before insert (Skip → bounce-back can land here twice).
+    const { data: existing } = await supabase
+      .from('widgets')
+      .select('embed_key')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    if (existing?.embed_key) {
+      setCurrentEmbedKey(existing.embed_key);
+      return existing.embed_key;
+    }
+
+    const { data: created } = await supabase
+      .from('widgets')
+      .insert({ user_id: user.id, name: 'Main widget' })
+      .select('embed_key')
+      .single();
+    const key = (created?.embed_key as string | undefined) ?? null;
+    if (key) setCurrentEmbedKey(key);
+    return key;
+  }
 
   async function saveStoreStep() {
     setSaving(true);
@@ -49,6 +85,10 @@ export default function OnboardingClient({
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('users').update({ brand_name: brandName, store_url: storeUrl }).eq('id', user.id);
+      // Create the widget here, not on page mount. Brings the user's
+      // first widget into existence at the moment they actually commit
+      // to setting one up.
+      await ensureWidget();
       const domains = defaultAllowedDomains(storeUrl);
       if (domains.length) {
         await supabase.from('widgets').update({ allowed_domains: domains }).eq('user_id', user.id);
