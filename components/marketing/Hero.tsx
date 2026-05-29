@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Globe, Play, Sparkles, Search, ShoppingBag, User, Truck, ShieldCheck, RefreshCcw, Heart, Download, Share2 } from 'lucide-react';
+import { ArrowRight, Globe, Sparkles, Search, ShoppingBag, User, Truck, ShieldCheck, RefreshCcw, Heart, Download, Share2 } from 'lucide-react';
 import BeforeAfterCompare from './BeforeAfterCompare';
 
 // Platform tiles live in the hero now — they're a discovery surface
@@ -76,8 +76,8 @@ export default function Hero({ onDemo, onCustomize }: { onDemo: () => void; onCu
           onClick={onDemo}
           className="mt-3 inline-flex items-center gap-1.5 text-sub text-[13px] font-bold hover:text-ink transition-colors"
         >
-          <Play size={13} fill="currentColor" strokeWidth={2.2} />
-          Or watch the 30-second live demo
+          <Sparkles size={13} strokeWidth={2.4} />
+          Or try the 30-second live demo
         </button>
 
         <PlatformRow />
@@ -128,13 +128,13 @@ function HeroMockup() {
             <div className="flex flex-col gap-1.5">
               {[0, 1, 2, 3, 4].map((i) => (
                 <div key={i} className={`w-7 h-10 rounded overflow-hidden border ${i === 0 ? 'border-ink border-2' : 'border-[#E0D5C8]'}`}>
-                  <Image src="/carpets/moroccan-oatmeal.jpg" alt="" width={28} height={40} className="w-full h-full object-cover" />
+                  <Image src="/carpets/moroccan-oatmeal.webp" alt="" width={28} height={40} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
 
             {/* Main product image — taller so the store frame isn't squat */}
-            <Image src="/carpets/moroccan-oatmeal.jpg" alt="" width={150} height={230} className="w-[150px] h-[230px] rounded-lg object-cover" />
+            <Image src="/carpets/moroccan-oatmeal.webp" alt="" width={150} height={230} className="w-[150px] h-[230px] rounded-lg object-cover" />
 
             {/* Right column — visual density with very little text */}
             <div className="flex-1 min-w-0 flex flex-col">
@@ -197,7 +197,7 @@ function HeroMockup() {
               preview keeps its presence. */}
       <div className="self-end w-[42%] rounded-xl border border-line bg-white shadow-[0_18px_44px_rgba(15,23,42,0.18)] overflow-hidden">
         <div className="flex items-center gap-2 px-2.5 py-2 border-b border-line">
-          <Image src="/carpets/moroccan-oatmeal.jpg" alt="" width={22} height={22} className="w-[22px] h-[22px] rounded object-cover flex-shrink-0" />
+          <Image src="/carpets/moroccan-oatmeal.webp" alt="" width={22} height={22} className="w-[22px] h-[22px] rounded object-cover flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[7px] font-extrabold tracking-[0.18em]" style={{ color: accent }}>VISUALIZE</p>
             <p className="text-ink text-[10px] font-extrabold truncate">Moroccan Oatmeal Rug</p>
@@ -208,8 +208,8 @@ function HeroMockup() {
             same overall height — the room photo still owns the body. */}
         <div className="aspect-[4/3] relative bg-[#F2E8DD]">
           <BeforeAfterCompare
-            baseImage="/room-previews/room-after.png"
-            overlayImage="/room-previews/room-before.png"
+            baseImage="/room-previews/room-after.webp"
+            overlayImage="/room-previews/room-before.webp"
             beforeLabel=""
             afterLabel=""
             afterAccent={accent}
@@ -297,14 +297,14 @@ function PlatformLogo({ kind }: { kind: 'custom' | 'shopify' | 'woo' | 'wix' | '
   }
   if (kind === 'shopify') {
     // Tight-cropped bag fills the tile.
-    return <Image src="/logos/shopify.png" alt="" width={64} height={64} className="w-full h-full object-contain" />;
+    return <Image src="/logos/shopify.webp" alt="" width={64} height={64} className="w-full h-full object-contain" />;
   }
   if (kind === 'woo') {
-    return <Image src="/logos/woocommerce.png" alt="" width={64} height={64} className="w-full h-full object-contain" />;
+    return <Image src="/logos/woocommerce.webp" alt="" width={64} height={64} className="w-full h-full object-contain" />;
   }
   // wix — black-on-transparent wordmark, rendered on the white tile.
   // unoptimized while we iterate so Next/Image doesn't serve a stale copy.
-  return <Image src="/logos/wix.png" alt="" width={64} height={64} unoptimized className="w-full h-full object-contain" />;
+  return <Image src="/logos/wix.webp" alt="" width={64} height={64} unoptimized className="w-full h-full object-contain" />;
 }
 
 // Real-feeling floating widget pill. Uses a subtle gradient + inner

@@ -66,7 +66,7 @@ export default function FlowShowcase() {
 function CardHeader({ accent }: { accent: string }) {
   return (
     <div className="flex items-center gap-2.5">
-      <Image src="/carpets/moroccan-oatmeal.jpg" alt="" width={32} height={32} className="w-8 h-8 rounded-md object-cover" />
+      <Image src="/carpets/moroccan-oatmeal.webp" alt="" width={32} height={32} className="w-8 h-8 rounded-md object-cover" />
       <div className="flex-1 min-w-0">
         <p className="text-[8px] font-extrabold tracking-wider" style={{ color: accent }}>VISUALIZE</p>
         <p className="text-ink text-xs font-extrabold truncate">Moroccan Oatmeal Rug</p>
@@ -112,7 +112,7 @@ function StagePhoto({ accent }: { accent: string }) {
       <CardHeader accent={accent} />
       <div className="h-[260px] rounded-xl bg-line overflow-hidden relative">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/room-previews/room-after.png" alt="" className="w-full h-full object-cover" />
+        <img src="/room-previews/room-after.webp" alt="" className="w-full h-full object-cover" />
         <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-black/80">
           <Check size={11} color="white" strokeWidth={3} />
           <span className="text-white text-[9px] font-bold">Photo ready</span>
@@ -174,8 +174,8 @@ function StageResult({ accent }: { accent: string }) {
       <CardHeader accent={accent} />
       <div className="h-[260px] rounded-xl overflow-hidden relative bg-line">
         <BeforeAfterCompare
-          baseImage="/room-previews/room-after.png"
-          overlayImage="/room-previews/room-before.png"
+          baseImage="/room-previews/room-after.webp"
+          overlayImage="/room-previews/room-before.webp"
           beforeLabel="Original room"
           afterLabel="With rug"
           afterAccent={accent}

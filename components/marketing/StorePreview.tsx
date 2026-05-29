@@ -80,13 +80,13 @@ export default function StorePreview({
         <div className="flex flex-col gap-3 max-lg:flex-row max-lg:overflow-x-auto">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className={`w-[62px] h-[78px] rounded border ${i === 0 ? 'border-2 border-ink' : 'border-[#EBF0F7]'} bg-[#F4F7FB] overflow-hidden shrink-0`}>
-              <Image src="/carpets/moroccan-oatmeal.jpg" alt="" width={62} height={78} className="w-full h-full object-cover" />
+              <Image src="/carpets/moroccan-oatmeal.webp" alt="" width={62} height={78} className="w-full h-full object-cover" />
             </div>
           ))}
         </div>
 
         <div className="w-[290px] h-[420px] rounded-lg overflow-hidden bg-[#F4F7FB] relative shrink-0">
-          <Image src="/carpets/moroccan-oatmeal.jpg" alt="" fill className="object-cover" />
+          <Image src="/carpets/moroccan-oatmeal.webp" alt="" fill className="object-cover" />
         </div>
 
         <div className="flex-1 min-w-[270px] pt-1.5">
@@ -232,7 +232,7 @@ function UploadModal({ accent, t, widgetMode }: { accent: string; t: any; widget
         <X size={16} className={isDark ? 'text-[#94A3B8]' : 'text-sub'} strokeWidth={2.2} />
       </button>
       <div className="flex items-center gap-3 pr-8 pt-3">
-        <Image src="/carpets/moroccan-oatmeal.jpg" alt="" width={44} height={44} className="w-11 h-11 rounded-lg object-cover" />
+        <Image src="/carpets/moroccan-oatmeal.webp" alt="" width={44} height={44} className="w-11 h-11 rounded-lg object-cover" />
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-extrabold tracking-wider" style={{ color: accent }}>{t.kicker}</p>
           <p className="text-base font-extrabold tracking-tight truncate" style={{ color: textPrimary }}>Moroccan Oatmeal Rug</p>
@@ -284,8 +284,8 @@ function ResultModal({ accent, t, widgetMode }: { accent: string; t: any; widget
       </div>
       <div className="h-[254px] rounded-lg overflow-hidden relative">
         <BeforeAfterCompare
-          baseImage="/room-previews/room-after.png"
-          overlayImage="/room-previews/room-before.png"
+          baseImage="/room-previews/room-after.webp"
+          overlayImage="/room-previews/room-before.webp"
           beforeLabel="Before"
           afterLabel="After"
           afterAccent={accent}

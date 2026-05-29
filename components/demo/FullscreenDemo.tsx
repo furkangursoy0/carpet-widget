@@ -37,7 +37,7 @@ export default function FullscreenDemo({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-rail">
           <div className="flex items-center gap-3">
-            <Image src="/carpets/moroccan-oatmeal.jpg" alt="" width={50} height={50} className="w-[50px] h-[50px] rounded-[10px] object-cover" />
+            <Image src="/carpets/moroccan-oatmeal.webp" alt="" width={50} height={50} className="w-[50px] h-[50px] rounded-[10px] object-cover" />
             <div>
               <p className="text-[10px] font-extrabold tracking-wider" style={{ color: ACCENT }}>VISUALIZE</p>
               <p className="text-ink text-lg font-extrabold tracking-tight mt-0.5">Moroccan Oatmeal Rug</p>
@@ -93,43 +93,58 @@ export default function FullscreenDemo({ onClose }: { onClose: () => void }) {
                     Preview
                   </span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/room-previews/example-room-rug.png" alt="" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 28%' }} />
+                  <img src="/room-previews/example-room-rug.webp" alt="" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 28%' }} />
                 </>
               ) : null}
               {stage === 'Generating' ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={uploadedImage ?? '/room-previews/room-after.png'} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 28%' }} />
+                  <img src={uploadedImage ?? '/room-previews/room-after.webp'} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 28%' }} />
                   <GeneratingOverlay />
                 </>
               ) : null}
               {stage === 'Result' ? (
-                <button onClick={() => setLightboxOpen(true)} className="w-full h-full relative cursor-pointer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/room-previews/room-before.png" alt="" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 28%' }} />
-                  <span className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-extrabold" style={{ backgroundColor: ACCENT_LIGHT, color: ACCENT }}>
-                    <Sparkles size={14} strokeWidth={2.4} />
-                    Preview ready · click to expand
-                  </span>
-                </button>
+                <div className="w-full h-full relative flex items-center justify-center p-6">
+                  <div className="relative h-full max-h-full" style={{ aspectRatio: '5 / 4' }}>
+                    <BeforeAfterCompare
+                      baseImage="/room-previews/room-after.webp"
+                      overlayImage="/room-previews/room-before.webp"
+                      afterLabel="With rug"
+                      afterAccent={ACCENT}
+                    />
+                    <button onClick={() => setLightboxOpen(true)} aria-label="Expand preview" className="absolute bottom-3 right-3 z-10 h-8 px-3 rounded-full bg-white/90 backdrop-blur flex items-center gap-1.5 hover:bg-white transition-colors shadow-sm">
+                      <Sparkles size={12} className="text-ink" strokeWidth={2.4} />
+                      <span className="text-ink text-[11px] font-extrabold">Expand</span>
+                    </button>
+                  </div>
+                </div>
               ) : null}
             </div>
 
-            {/* Action row */}
-            <div className="flex gap-3 px-6 py-4 border-t border-rail">
-              <button onClick={restart} className="flex-1 h-12 rounded-lg border border-line bg-white flex items-center justify-center gap-2 hover:bg-bg transition-colors">
-                <RefreshCcw size={15} className="text-ink" strokeWidth={2.2} />
-                <span className="text-ink text-[13px] font-bold">Start over</span>
-              </button>
-              <button className="flex-1 h-12 rounded-lg border border-line bg-white flex items-center justify-center gap-2 hover:bg-bg transition-colors">
-                <Share2 size={15} className="text-ink" strokeWidth={2.2} />
-                <span className="text-ink text-[13px] font-bold">Share</span>
-              </button>
-              <button className="flex-[2] h-12 rounded-lg text-white flex items-center justify-center gap-2 shadow-brand hover:opacity-95 transition-opacity" style={{ backgroundColor: ACCENT }}>
-                <Download size={15} strokeWidth={2.3} />
-                <span className="text-[13px] font-bold">Download image</span>
-              </button>
-            </div>
+            {/* Action row — only meaningful once a preview exists */}
+            {stage === 'Result' ? (
+              <div className="flex gap-3 px-6 py-4 border-t border-rail">
+                <button onClick={restart} className="flex-1 h-12 rounded-lg border border-line bg-white flex items-center justify-center gap-2 hover:bg-bg transition-colors">
+                  <RefreshCcw size={15} className="text-ink" strokeWidth={2.2} />
+                  <span className="text-ink text-[13px] font-bold">Start over</span>
+                </button>
+                <button className="flex-1 h-12 rounded-lg border border-line bg-white flex items-center justify-center gap-2 hover:bg-bg transition-colors">
+                  <Share2 size={15} className="text-ink" strokeWidth={2.2} />
+                  <span className="text-ink text-[13px] font-bold">Share</span>
+                </button>
+                <button className="flex-[2] h-12 rounded-lg text-white flex items-center justify-center gap-2 shadow-brand hover:opacity-95 transition-opacity" style={{ backgroundColor: ACCENT }}>
+                  <Download size={15} strokeWidth={2.3} />
+                  <span className="text-[13px] font-bold">Download image</span>
+                </button>
+              </div>
+            ) : stage === 'Generating' ? (
+              <div className="flex px-6 py-4 border-t border-rail">
+                <button onClick={restart} className="w-full h-12 rounded-lg border border-line bg-white flex items-center justify-center gap-2 hover:bg-bg transition-colors">
+                  <RefreshCcw size={15} className="text-ink" strokeWidth={2.2} />
+                  <span className="text-ink text-[13px] font-bold">Cancel</span>
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -150,7 +165,7 @@ export default function FullscreenDemo({ onClose }: { onClose: () => void }) {
             <X size={22} color="white" strokeWidth={2.2} />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/room-previews/room-before.png" alt="" className="max-w-full max-h-full object-contain" />
+          <img src="/room-previews/room-after.webp" alt="" className="max-w-[calc(100vw-3rem)] max-h-[calc(100vh-3rem)] object-contain" />
         </div>
       ) : null}
     </div>

@@ -9,6 +9,7 @@ export default function BeforeAfterCompare({
   afterLabel = 'With product',
   afterAccent = '#2458F5',
   small,
+  objectPosition,
 }: {
   baseImage: string;
   overlayImage: string;
@@ -16,6 +17,7 @@ export default function BeforeAfterCompare({
   afterLabel?: string;
   afterAccent?: string;
   small?: boolean;
+  objectPosition?: string;
 }) {
   const [pct, setPct] = useState(50);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -45,13 +47,13 @@ export default function BeforeAfterCompare({
   return (
     <div ref={wrapRef} className="relative w-full h-full overflow-hidden bg-[#F1F5F9] select-none">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={baseImage} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+      <img src={baseImage} alt="" className="absolute inset-0 w-full h-full object-cover" style={objectPosition ? { objectPosition } : undefined} draggable={false} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={overlayImage}
         alt=""
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ clipPath: `inset(0 0 0 ${pct}%)` }}
+        style={{ clipPath: `inset(0 0 0 ${pct}%)`, ...(objectPosition ? { objectPosition } : null) }}
         draggable={false}
       />
       <div className="absolute top-0 bottom-0 w-0.5 -ml-px bg-white" style={{ left: `${pct}%` }}>
